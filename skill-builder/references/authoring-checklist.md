@@ -52,8 +52,7 @@ Run through this before publishing a skill to the repo.
 - [ ] Worked-example arithmetic reproduces (ROI/NPV figures actually compute)
 - [ ] Contested pop-wisdom is framed as one option, not stated as settled fact
 - [ ] "Always/never" absolutes are true absolutes, not overstated defaults
-- [ ] See [../../docs/correctness-audit-process.md](../../docs/correctness-audit-process.md)
-      for the periodic library-wide claim-audit
+- [ ] Periodically re-audit worked-example claims/arithmetic across the library
 
 ## Testing (does it work?)
 - [ ] Tested on a realistic request with a fresh Claude — it triggered

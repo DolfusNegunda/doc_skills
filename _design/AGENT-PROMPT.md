@@ -1,7 +1,12 @@
 # Agent prompt — build the "Document Template Suite" skills repository
 
-> Hand this whole file to the implementing agent. It is self-contained. Read it top to
-> bottom before doing anything. Companion evidence: [TEST-RUN-EVIDENCE.md](TEST-RUN-EVIDENCE.md).
+> **STATUS: EXECUTED.** This was the build brief; the repository around it has already
+> been built from it (see git history). It is retained as design documentation and as the
+> spec for the remaining refinements (image-slot UX, field codes / text boxes, the HTML
+> skill). Sections written as future work ("implement…", "scaffold…") describe how the
+> repo was produced or what is still open — read them as the plan, not as pending setup.
+>
+> Companion evidence: [TEST-RUN-EVIDENCE.md](TEST-RUN-EVIDENCE.md).
 
 ---
 

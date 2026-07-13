@@ -51,5 +51,4 @@ format/restart, or different headers/footers. "Next Page" is the usual break typ
 ## Track changes and comments
 - For collaborative review, enable track changes; resolve or accept before final.
 - Use comments for questions, not inline "TODO" text that can ship by accident.
-- To compare two finished versions instead, see
-  [../comparing-documents/SKILL.md](../../comparing-documents/SKILL.md).
+- To compare two finished versions instead, use a document-comparison tool.
