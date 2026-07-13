@@ -67,8 +67,11 @@ property and image code had zero automated coverage.
 - Image-slot **refinements**: better slot identification (show the user a cropped render of
   each slot; map media part → slides), aspect-distortion warning, text-contrast check.
 - Word **field codes** with cached results and **text boxes** (`w:txbxContent`).
-- The four-skill new repo, the HTML-presentation stub, and self-validation across **all**
-  `docs.zip` folder groups (change note, lessons learned, Project Kickoff, Project signoff).
+- Image-slot refinements (see above); Word field codes / text boxes.
+
+The four-skill new repo was built and self-validated across the `docs.zip` folder groups;
+`presenting-with-html` is fully built from the user's design pattern (boilerplate +
+validator + design system, verified in a headless browser), not a stub.
 
 ## docs.zip folder groups (each folder = a document TYPE; each file = a client/version)
 ```

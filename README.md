@@ -17,7 +17,7 @@ documents. Drop in any template and go.
 | [building-document-templates](building-document-templates/SKILL.md) | **The core.** Templatize a client `.docx`/`.pptx` → fill → validate. Preserves layout, fonts, logos, styles; swaps variable content for `{{ placeholders }}`. Vision-driven and interactive; handles body text, tables, headers/footers, **data-bound cover pages** (document properties), and **image/logo slots**. |
 | [building-powerpoint-decks](building-powerpoint-decks/SKILL.md) | Make clean, on-brand PowerPoint decks. |
 | [authoring-word-documents](authoring-word-documents/SKILL.md) | Author well-structured Word documents. |
-| [presenting-with-html](presenting-with-html/SKILL.md) | HTML presentations / composable boilerplate. **Stub — pending the user's context.** |
+| [presenting-with-html](presenting-with-html/SKILL.md) | Premium, boardroom-ready HTML report decks: glassmorphism, KPI cards, Plotly charts, slide nav, persisted dark/light toggle. Ships a working boilerplate + structural validator. |
 
 ### Supporting skills (preserved because the four depend on them)
 Branding — [producing-branded-documents](producing-branded-documents/SKILL.md),

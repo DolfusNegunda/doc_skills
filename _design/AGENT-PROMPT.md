@@ -200,11 +200,14 @@ both landing exactly in place, everything else intact. See [TEST-RUN-EVIDENCE.md
   (slot spec in → image file out); do not hard-wire a specific generator.
 - Needs `pip install pillow`.
 
-### 6.C — HTML Presentation skill (stub only)
-Create the skill directory and a `SKILL.md` stub with correct frontmatter, a clear scope
-sentence ("generic HTML presentations / composable HTML boilerplate"), and a
-`## Status: placeholder` section noting the real context will be supplied by the user and
-formalised later. Do **not** invent the implementation. Make it pass `validate_skills.py`.
+### 6.C — HTML Presentation skill (DONE — built from the user's context)
+> Originally planned as a stub. The user supplied the "Modern Executive HTML Report"
+> design pattern, so `presenting-with-html` is now **fully built**: a working, verified
+> boilerplate deck (`assets/deck-template.html` — glassmorphism, KPI cards, Plotly with
+> theme-aware restyle, arrow/keyboard/dot nav, persisted dark/light toggle, responsive),
+> a structural validator (`scripts/validate_html.py`, covered by the smoke test), and the
+> full design system (`references/design-system.md`). Verified in a headless browser
+> (hero, chart slide, and light theme all render). Future work: none required for v1.
 
 ### 6.D — Self-validation against `docs.zip` (definition of done)
 Prove the suite generically. For **each** folder group in `docs.zip`, run the full §5

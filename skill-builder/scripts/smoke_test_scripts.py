@@ -258,6 +258,18 @@ def main():
         check("pptx fill expands two independent list fields",
               all(x in deck_texts for x in ("A1", "A2", "A3", "B1", "B2")))
 
+        print("presenting-with-html/validate_html.py")
+        boilerplate = ROOT / "presenting-with-html" / "assets" / "deck-template.html"
+        rc, d = run("presenting-with-html/scripts/validate_html.py", boilerplate)
+        check("html validator passes the boilerplate deck",
+              rc == 0 and d and d["status"] == "OK")
+        bad_html = tmp / "bad_report.html"
+        bad_html.write_text("<html><body><h1>Report {{ title }}</h1>"
+                            "<p>lorem ipsum</p></body></html>", encoding="utf-8")
+        rc, d = run("presenting-with-html/scripts/validate_html.py", bad_html)
+        check("html validator fails a non-deck / placeholder page",
+              rc == 1 and d and d["status"] == "FAIL")
+
     passed = sum(1 for _, ok in results if ok)
     print(f"\n{passed}/{len(results)} checks passed")
     sys.exit(0 if passed == len(results) else 1)
