@@ -12,9 +12,9 @@ company-specific identity completely separate from the document-generation
 engine, so a document-type skill built once can be deployed at any company
 by swapping in that company's own profile — no code changes required.
 
-This skill is deliberately organization-agnostic. If you're looking for a
-concrete worked example of a filled-in profile, see
-[examples/bsc-profile/](examples/bsc-profile/PROFILE.md).
+This skill is deliberately organization-agnostic. For a concrete, generic
+worked example of a brand spec + template, see
+[../producing-branded-documents/SKILL.md](../producing-branded-documents/SKILL.md).
 
 ## When to use this skill
 - Building a new document-type skill (read this first — it defines the
@@ -62,8 +62,9 @@ concrete worked example of a filled-in profile, see
 
 A profile is stored as a small folder: `profiles/{org-slug}/` containing
 `logo.*` and (if not using the shared generic template) `base-template.docx`.
-See [examples/bsc-profile/](examples/bsc-profile/PROFILE.md) for a complete,
-filled-in profile built from BSC's real documents.
+A filled-in profile records the org's colors, fonts, logo placement, and the
+tokenized fields — see the generic brand spec in
+[../producing-branded-documents/SKILL.md](../producing-branded-documents/SKILL.md).
 
 ## Onboarding a new organization
 Follow this procedure whenever a document-type skill needs to be deployed
@@ -92,6 +93,3 @@ Full step-by-step detail: [references/org-onboarding-checklist.md](references/or
 - [references/org-onboarding-checklist.md](references/org-onboarding-checklist.md)
   — Step-by-step procedure for turning a new organization's real documents
   (or lack thereof) into a usable branding profile.
-- [examples/bsc-profile/PROFILE.md](examples/bsc-profile/PROFILE.md) — A
-  complete worked example profile (Business Science Corporation), showing
-  what a filled-in profile looks like end to end.
