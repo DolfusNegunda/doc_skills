@@ -1,0 +1,30 @@
+{
+  "company_name": "ACME Consulting",
+  "client_name": "Globex Corporation",
+  "client_key": "globex",
+  "project_name": "Data Platform Migration",
+  "week": "27",
+  "report_date": "2026-07-08",
+  "prepared_by": "D. Negunda",
+  "overall_status": "Amber",
+  "summary": "Migration is broadly on track. The ingestion layer is complete and validated; the reporting cutover slipped a week pending Globex-side data access, which is the main risk to the go-live date.",
+  "accomplishments": [
+    "Completed and validated the ingestion pipeline for all 12 source systems.",
+    "Signed off the target warehouse schema with the Globex data team.",
+    "Automated nightly reconciliation checks (row counts + null-rate thresholds)."
+  ],
+  "in_progress": [
+    "Rebuilding the 8 executive dashboards on the new warehouse.",
+    "Drafting the cutover runbook and rollback plan."
+  ],
+  "blockers": [
+    "Awaiting production read access to Globex CRM (requested 2026-07-02, blocking reporting cutover).",
+    "Finance sign-off on the revenue reconciliation logic still outstanding."
+  ],
+  "upcoming": [
+    "Complete dashboard rebuild and begin UAT.",
+    "Dry-run the cutover in staging.",
+    "Confirm go-live date once CRM access is granted."
+  ],
+  "notes": "Recommend escalating the CRM access request at the Thursday steering committee."
+}

@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install python-docx python-pptx pymupdf pillow
+      - name: Validate skills (frontmatter, naming, links, duplicates)
+        run: python skill-builder/scripts/validate_skills.py
+      - name: Smoke-test bundled scripts
+        run: python skill-builder/scripts/smoke_test_scripts.py

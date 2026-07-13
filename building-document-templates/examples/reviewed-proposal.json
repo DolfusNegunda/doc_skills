@@ -1,0 +1,16 @@
+{
+  "format": "docx",
+  "source_file": "client_qbr.docx",
+  "candidates": [
+    {"current_text": "Globex Corporation", "suggest_name": "client_name", "suggest_type": "text", "keep": "variable", "labels": ["Client"]},
+    {"current_text": "Jane Smith", "suggest_name": "prepared_by", "suggest_type": "text", "keep": "variable", "labels": ["Prepared by"]},
+    {"current_text": "Q3 2026", "suggest_name": "period", "suggest_type": "text", "keep": "variable", "labels": ["Period"]},
+    {"current_text": "2026-07-13", "suggest_name": "report_date", "suggest_type": "text", "keep": "variable", "labels": ["Date"]},
+    {"current_text": "Globex Corporation continued strong momentum this period.", "suggest_name": "summary", "suggest_type": "text", "keep": "variable"},
+    {"current_text": "Launched the new analytics portal", "suggest_name": "achievements", "suggest_type": "list", "keep": "variable"},
+    {"current_text": "Reduced churn by 12%", "keep": "remove"},
+    {"current_text": "Signed 3 enterprise accounts", "keep": "remove"},
+    {"current_text": "$4.2M", "suggest_name": "revenue", "suggest_type": "text", "keep": "variable"},
+    {"current_text": "$820K", "suggest_name": "net_new_arr", "suggest_type": "text", "keep": "variable"}
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "client_name": "Initech LLC",
+  "prepared_by": "Michael Bolton",
+  "period": "Q4 2026",
+  "report_date": "2026-10-02",
+  "summary": "Initech LLC accelerated adoption across all regions this quarter.",
+  "achievements": [
+    "Shipped SSO and audit logging",
+    "Expanded into APAC",
+    "Cut onboarding time to 2 days",
+    "Hit 99.95% uptime"
+  ],
+  "revenue": "$6.8M",
+  "net_new_arr": "$1.3M"
+}
