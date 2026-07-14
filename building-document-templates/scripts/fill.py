@@ -59,6 +59,72 @@ def expand_list(paragraph, tag, items, wrap):
         C.replace_in_paragraph(wrap(clone, parent), tag, str(item))
 
 
+def _all_docx_tables(doc):
+    """Every table in the body, recursing into nested tables (row-groups live in
+    body content tables). Header/footer tables are not row-group carriers here."""
+    from docx.table import Table
+    out = []
+
+    def walk(tables):
+        for t in tables:
+            out.append(t)
+            for row in t.rows:
+                for cell in row.cells:
+                    walk(cell.tables)
+    walk(doc.tables)
+    return out
+
+
+def _fill_row_element(tr, columns, item):
+    """Replace each column field's {{ tag }} inside one <w:tr> clone from `item`
+    (a dict keyed by the column field names). Preserves each cell's formatting."""
+    from docx.oxml.ns import qn
+    from docx.text.paragraph import Paragraph
+    for p in tr.iter(qn("w:p")):
+        para = Paragraph(p, None)
+        for col in columns:
+            val = item.get(col, "") if isinstance(item, dict) else ""
+            C.replace_in_paragraph(para, C.placeholder(col), "" if val is None else str(val))
+
+
+def expand_row_groups(doc, row_groups, data):
+    """Clone a table's template ROW once per data item — real repeating rows.
+
+    A row_group is {name, columns:[field,...]}. The template row is the <w:tr>
+    whose cells hold those column tags. `data[name]` is a list of dicts keyed by
+    the column field names. Empty/missing -> the template row is removed (header
+    stays). This is what paragraph-level list expansion cannot do (it stacks
+    paragraphs inside one cell instead of adding rows)."""
+    import copy
+    for g in row_groups:
+        name, columns = g["name"], g["columns"]
+        items = data.get(name) or []
+        if isinstance(items, dict):
+            items = [items]
+        tag0 = C.placeholder(columns[0])
+        template_tr = None
+        for tbl in _all_docx_tables(doc):
+            for row in tbl.rows:
+                if any(tag0 in c.text for c in row.cells):
+                    template_tr = row._tr
+                    break
+            if template_tr is not None:
+                break
+        if template_tr is None:
+            continue
+        if not items:
+            template_tr.getparent().remove(template_tr)
+            continue
+        pristine = copy.deepcopy(template_tr)     # still-tagged copy for the clones
+        _fill_row_element(template_tr, columns, items[0])
+        anchor = template_tr
+        for item in items[1:]:
+            clone = copy.deepcopy(pristine)
+            anchor.addnext(clone)
+            anchor = clone
+            _fill_row_element(clone, columns, item)
+
+
 def _is_empty(value):
     """Absent/None/blank/empty-list all count as 'no value supplied'."""
     return value is None or value == "" or value == []
@@ -100,10 +166,16 @@ def fill_paragraphs(paragraphs, data, fields, wrap):
     return missing, types
 
 
-def render(fmt, template_path, data, fields, out_path):
+def render(fmt, template_path, data, manifest, out_path):
+    fields = manifest["fields"]
+    row_groups = manifest.get("row_groups", [])
     if fmt == "docx":
         from docx import Document
         doc = Document(str(template_path))
+        # Row-group expansion FIRST — it clones <w:tr> rows, restructuring tables
+        # before the paragraph-level passes run over the (new) paragraph set.
+        if row_groups:
+            expand_row_groups(doc, row_groups, data)
         paras = list(C.iter_docx_paragraphs(doc))
         wrap = _wrap_docx
         saver = doc
@@ -197,7 +269,7 @@ def main():
 
     data = json.loads(Path(args.data).read_text(encoding="utf-8"))
     fmt = manifest["format"]
-    missing = render(fmt, template_path, data, manifest["fields"], args.out)
+    missing = render(fmt, template_path, data, manifest, args.out)
 
     print(f"Filled {manifest['template_id']} -> {args.out}")
     if args.export_pdf:

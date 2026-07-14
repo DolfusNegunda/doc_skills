@@ -1,6 +1,6 @@
 ---
 name: building-document-templates
-description: Turn a client's existing Word (.docx) or PowerPoint (.pptx) file into a reusable, governed template — same layout, fonts, logos and styles, with the variable content swapped for placeholders — then fill it to produce consistent future documents from data. Use when the user asks to "create a template", "templatize this document/deck", "make this reusable", "build a standard format", or "produce the same kind of document again just with new content". Ships a tested engine (templatize → registry → fill → validate) plus placeholder/governance conventions, not just an empty copy.
+description: Turn a client's existing Word (.docx) or PowerPoint (.pptx) file into a reusable, governed template — same layout, fonts, logos and styles, with the variable content swapped for placeholders — then fill it to produce consistent future documents from data. Governs a FAMILY system: one canonical template per document family (Lessons Learned, Change Note, Kickoff, Signoff…) that later files converge to, rather than a divergent per-file clone. Use when the user asks to "create a template", "templatize this document/deck", "make this reusable", "build a standard format", or "produce the same kind of document again just with new content". Ships a tested engine (templatize → registry → fill → validate, with table-row expansion, source-residue checks and unsupported-object flagging) plus placeholder/governance conventions, not just an empty copy.
 ---
 
 # Building Document Templates
@@ -13,11 +13,16 @@ description: Turn a client's existing Word (.docx) or PowerPoint (.pptx) file in
    formatting** (bold, size, font, colour) — it is exactly why a filled cover title
    comes out in the wrong font. The engine's replacement preserves the run's formatting;
    your hand edit will not.
-2. **Confirm EVERY section before building.** Go through the whole document section by
-   section (cover, intro, objectives, definition-of-victory/scope, team, timeline,
-   communication, next steps, appendix…) and ask the user what changes in each. Do not
-   silently leave project-specific sections (e.g. Definition of Victory, team) with the
-   previous project's content. If a section needs new content, it must become fields.
+2. **Build INTERACTIVELY — confirm EVERY section AND every image with the user.** The
+   build is a conversation, not a silent pass. Go section by section (cover, intro,
+   objectives, DoV/scope, team, timeline, communication, next steps, appendix…) and ask
+   the user what varies vs. stays. Then go IMAGE by IMAGE: present each embedded picture
+   and confirm preserve (branding: logos, cover art, brand bars) vs. placeholder
+   (project-specific: timelines, Gantt charts, screenshots, milestone trackers). Do not
+   silently leave project-specific content (sections OR images) with the previous
+   project's data. Heuristics mis-classify (a milestone tracker embedded as a JPEG XR
+   image looked like "furniture") — the per-image confirmation is what catches this.
+   If a section/image needs new content, it must become a field/placeholder.
 3. **Vision-QA is mandatory.** After filling, render the output with `render_pages.py`
    and Read every page. Confirm: title/heading fonts preserved, the cover updated,
    logos swapped where intended, nothing overflows or misaligns, no stale content.
@@ -26,6 +31,16 @@ description: Turn a client's existing Word (.docx) or PowerPoint (.pptx) file in
    both up as fields, or they silently keep the source client's values.
 5. **Never claim a change you did not verify by rendering.** Report only what the vision
    pass confirms.
+6. **Converge to the canonical family template — don't fork.** A new file of a known
+   family (Lessons Learned, Change Note, Kickoff, Signoff…) must map onto that family's
+   ONE canonical template (extract its content → fill), producing the family's consistent
+   style. Only create a new subtype for a genuine *structural* reason, recorded in
+   governance — never because two files merely differ in content or minor layout.
+7. **Flag unsupported objects — never fake success.** SmartArt/diagram text and native
+   charts are NOT fillable (python-docx/pptx can't see their text). `propose` and
+   `validate` surface these; when a page depends on them, say what can and cannot be
+   templated and require a rebuild-or-accept decision. Do not report a deck as fully
+   templated when its team-cards/agenda/timeline are SmartArt.
 
 ## Scope
 Turn a real example document into a reusable **template + manifest**, register it in
@@ -42,21 +57,51 @@ and only **swaps the variable text for `{{ placeholder }}` tags**. Never rebuild
 layout by hand and never re-solve OOXML internals. Filling later touches only the
 placeholder text, so every produced document looks identical to the client's original.
 
+## Family-template system (the operating model)
+The goal is not per-file cloning — it is **one canonical template per document family**
+that every future file of that family converges to, so all Lessons Learned look alike,
+all Change Notes look alike, etc.
+
+- **First time (bootstrap):** the user gives a real file → identify its **family** →
+  analyse it visually + structurally → if ≥2 exemplars exist, compare them to separate
+  what's fixed (structure/branding) from what varies (content) → build the canonical
+  template + manifest → register it under `registry/_families/<family>/`.
+- **Next time (reuse):** identify the family → **extract the new file's content** into a
+  `content.json` keyed to the family schema → fill the canonical template → validate
+  (leftover tags + structure + **source-residue** + unsupported flags) → visual QA →
+  deliver only if residue-clean and visually clean.
+
+Convergence rule: a divergent source layout (e.g. a Lessons-Learned deliverables table
+with a different column set) is **absorbed** into the canonical schema, not preserved as
+a fork. Subtypes exist only for a real structural reason and are recorded in governance.
+
 ## The engine
 ```text
 scripts/
-  templatize.py   # client file -> proposes fixed/variable split -> emits template + manifest
-  fill.py         # template + data JSON -> finished document (+ optional --export-pdf)
-  validate.py     # gate: no leftover tags, structure preserved
-  render_pages.py # render docx/pptx/pdf -> one PNG per page for VISION inspection
+  templatize.py   # client file -> proposes fixed/variable split (+ flags unsupported objects) -> template + manifest
+  fill.py         # template + data JSON -> finished document; expands LIST bullets AND table ROW-GROUPS (+ optional --export-pdf)
+  validate.py     # gate: no leftover tags, structure preserved, SOURCE-RESIDUE check, unsupported-object surface
+  render_pages.py # render docx/pptx/pdf -> one PNG per page for VISION inspection (faithful: shows logos/branding/graphics)
   registry.py     # browse the gallery: list / find / show templates
-  common.py       # format detection, placeholders, manifest I/O, registry paths, docProps
-registry/                              # the template gallery (version-controlled)
-  <client>/<doc-type>/
-      template.docx|pptx               # the client's file, with placeholders
-      manifest.json                    # fields, types, guidance, owner, version, changelog
+  common.py       # format detection, placeholders, manifest I/O, docProps, image slots, unsupported-object detection
+registry/
+  _families/<family>/                  # GOVERNED canonical family templates (Lessons Learned, Change Note, …)
+      template.docx|pptx               # branding/structure preserved, all content -> placeholders/row-groups
+      manifest.json                    # fields, row_groups, source_terms, owner, version, changelog
+  <client>/<doc-type>/                 # optional per-client instances (default is: fill the family template, don't fork)
 ```
 Point `$TEMPLATE_REGISTRY` at a shared folder to keep the gallery outside the repo.
+
+**Engine capabilities added for the family system:**
+- **Table-row expansion (`fill.py`)** — a `row_group` in the manifest (`{name, columns:[field,…]}`)
+  makes the fill clone a table's template `<w:tr>` once per data item (real repeating rows),
+  where the old list expansion only stacked paragraphs in one cell. `data[group]` is a list
+  of dicts keyed by the column fields; an empty list removes the template row (header stays).
+- **Source-residue check (`validate.py`)** — `--source-terms` / manifest `source_terms`
+  fails the fill if source-exemplar content (client/project/code/dates/domain terms) survives.
+  "No leftover tags" ≠ "successfully reused". Use project-IDENTIFYING terms, not recurring people.
+- **Unsupported-object flagging (`common.iter_unsupported_objects`)** — surfaces SmartArt/chart
+  text that cannot be filled, in `propose` (warning) and `validate` (informational).
 
 Dependencies: `pip install python-docx python-pptx` (already used across the office
 skills). PDF export additionally needs LibreOffice (or Save-As-PDF from the app).
@@ -204,22 +249,49 @@ omit it to keep the original.
 - A vision/image model can **generate** a missing asset to a slot's spec, then fill it in.
 - Needs `pip install pillow`. See [references/engine-design.md](references/engine-design.md).
 
+## Project-specific images & charts → placeholders (not baked in)
+A reusable template must NOT carry the source project's figures. During the interactive
+build, classify every embedded image:
+- **Preserve** (branding/design): logos, cover artwork, brand bars, dividers.
+- **Placeholder** (project-specific content): timeline/Gantt charts, milestone trackers,
+  screenshots, result figures. Replace the media with a labelled placeholder and register
+  an **optional image field** (`{{ figure }}` slot) — at fill time the user supplies a new
+  image or leaves the placeholder, so the figure "can exist or not". Never ship the
+  source's chart.
+- Watch for **charts/tables embedded AS images** (e.g. a milestone tracker saved as a
+  picture) — they look like real content but carry stale data the text residue check
+  can't see. Confirm each with the user.
+- **JPEG XR (`.wdp`) limitation:** a PNG placeholder can't be encoded into a `.wdp` part,
+  so such a slot renders BLANK (effectively removed) rather than showing the placeholder
+  box. Acceptable ("placeholder or removed"); a true placeholder needs format conversion.
+
+## Now supported (previously limitations)
+- **Variable-count table rows** — `row_group` fields expand a table's template row per
+  data item (proven on Lessons Learned: one canonical template filled from differently-
+  sized source files, rows growing to match). Word `.docx` only.
+- **Reuse safety** — the source-residue check catches stale source content that a
+  leftover-tag check alone misses.
+
 ## Known limitations (state these honestly; don't fake them)
-- **SmartArt / diagram text is not readable or fillable.** Content inside a SmartArt
-  graphic or diagram `graphicFrame` (common for "meet the team" member cards, org charts,
-  process diagrams) is invisible to python-docx/pptx — no text frame — so the engine
-  leaves it as the source's. Workaround: rebuild those slides with normal shapes/tables
-  in the base template so they become fillable, or edit the SmartArt by hand.
-- **Repeating card blocks with images don't auto-clone.** Adding/removing e.g. a team
-  member card (photo + text group) is not automated; a `list` field grows bullets/rows,
-  not shape groups.
+- **SmartArt / diagram text and native charts are not fillable.** Content inside a
+  SmartArt/diagram (`diagrams/data*.xml`) or chart (`charts/chart*.xml`) is invisible to
+  python-docx/pptx, so the fill keeps the source's text. The engine now **detects and
+  flags** these (`propose` warning, `validate` surface) — do not claim success on a page
+  that depends on them. Workaround: rebuild those slides with normal shapes/tables so they
+  become fillable, or accept them as static and say so.
+- **PPTX row-groups not yet supported.** Table-row expansion is `.docx` only; repeating
+  rows / team cards / timelines in decks are not auto-cloned (flag them).
+- **Data-bound cover DATE fields can be unreachable.** A cover date rendered from a Word
+  DATE field or a non-standard content control (not a docProps/CoverPageProperties leaf)
+  is not in any text run or scanned property, so the fill can't update it and residue
+  can't match it — the vision-QA pass must catch it. (Cover title/subtitle/PublishDate
+  bound to docProps ARE handled.)
 - **No text autofit.** Filling a fixed box with content *longer* than the original can
-  overflow — keep replacements close to the original length, or the vision-QA pass will
-  catch it and you resize/trim. (Shorter is always safe.)
-- **Whole-paragraph fields lose inline emphasis.** If a whole paragraph that had a bold
-  phrase mid-sentence becomes one field, the replacement takes the paragraph's base run
-  formatting (size/font/colour preserved, mid-sentence bold not). Split into smaller
-  fields if the inline bold matters.
+  overflow — keep replacements close to the original length; vision-QA catches it.
+  (Shorter is always safe.)
+- **Whole-paragraph fields lose inline emphasis.** A whole paragraph that had a bold
+  phrase mid-sentence takes the paragraph's base run formatting when filled (size/font/
+  colour preserved, mid-sentence bold not). Split into smaller fields if inline bold matters.
 
 ## Related skills
 - [authoring-word-documents](../authoring-word-documents/SKILL.md), [building-powerpoint-decks](../building-powerpoint-decks/SKILL.md) — build the one-off the template is learned from.

@@ -6,3 +6,6 @@ __pycache__/
 !**/registry/README.md
 ~$*
 .DS_Store
+
+# Local demo/scratch output — generated documents and renders, never pushed.
+output/
