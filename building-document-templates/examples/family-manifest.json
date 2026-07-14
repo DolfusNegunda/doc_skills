@@ -1,0 +1,87 @@
+{
+  "template_id": "_families/project_status",
+  "client": "_families",
+  "doc_type": "project_status",
+  "format": "docx",
+  "template_file": "template.docx",
+  "source_file": "family_source.docx",
+  "version": "1.0.0",
+  "owner": "demo@example.com",
+  "created": "2026-07-14",
+  "changelog": [
+    "2026-07-14 v1.0.0 templatized from family_source.docx"
+  ],
+  "fields": [
+    {
+      "name": "summary",
+      "type": "text",
+      "example": "The Widget Assembly Line automation reached 70% of planned throughput this period. Integration testing for the PRJ-0042 conveyor module is complete and the Northwind Traders operations team has begun acceptance trials.",
+      "guidance": "",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "report_subtitle",
+      "type": "text",
+      "example": "Monthly Project Status Report — PRJ-0042",
+      "guidance": "",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "doc_title",
+      "type": "text",
+      "example": "Northwind Traders — Widget Line Status",
+      "guidance": "Fills: Cover title (document property)",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "doc_subtitle",
+      "type": "text",
+      "example": "Monthly Project Status Report",
+      "guidance": "Fills: Cover subtitle (document property)",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "report_date",
+      "type": "text",
+      "example": "2024/01/15",
+      "guidance": "Fills: Report date",
+      "required": true,
+      "media_part": ""
+    }
+  ],
+  "row_groups": [
+    {
+      "name": "team",
+      "columns": [
+        "name",
+        "role",
+        "allocation"
+      ]
+    },
+    {
+      "name": "deliverables",
+      "columns": [
+        "item",
+        "description",
+        "status"
+      ]
+    },
+    {
+      "name": "metrics",
+      "columns": [
+        "metric",
+        "value"
+      ]
+    }
+  ],
+  "source_terms": [
+    "Northwind Traders",
+    "PRJ-0042",
+    "Widget Assembly Line",
+    "2024/01/15"
+  ]
+}

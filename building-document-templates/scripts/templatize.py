@@ -7,16 +7,26 @@ example can't tell you which text is boilerplate and which changes each time
 ("Acme Q3 2026" — is Acme the client? is Q3 the quarter? both?):
 
   1. propose : read the file, extract candidate variable values with context and a
-               heuristic guess, and write a proposal JSON for a human/agent to edit.
+               heuristic guess (plus IMAGE slots, cover PROPERTY leaves, and ROW-GROUP
+               table candidates), and write a proposal JSON for a human/agent to edit.
   2. build   : read the (edited) proposal, inject placeholders for everything marked
-               keep="variable", and register the template + manifest in the gallery.
+               keep="variable", expand confirmed tables into repeating ROW-GROUPS,
+               and register the template + manifest in the gallery.
+
+In the FAMILY model (the default), a template registers under
+``registry/_families/<family>/`` — the one canonical template a document family
+converges to — with variable-count tables as ``row_groups`` and the source
+exemplar's identifying terms recorded as ``source_terms`` so a later fill is
+checked for stale residue. ``--client``/``--doc-type`` still make a per-client
+instance for the rare structural exception.
 
 Usage:
     python scripts/templatize.py propose --file client.docx --out proposal.json
-    # ...review proposal.json: set keep, rename fields, set type (text|list)...
+    # ...review proposal.json: set keep, rename fields, set type (text|list); mark
+    #    variable-count tables as row-groups (keep='variable' on the candidate)...
     python scripts/templatize.py build --file client.docx --fields proposal.json \
-        --client acme --doc-type quarterly-review \
-        --owner you@co.com --created 2026-07-13
+        --family lessons-learned --owner you@co.com --created 2026-07-13 \
+        --source-terms "Acme Corp,PRJ-1935,2024/03/10,Fragmentation"
 """
 from __future__ import annotations
 
@@ -76,6 +86,94 @@ def guess_keep_and_type(value: str) -> tuple[str, str]:
     if len(value) > LONG_TEXT:
         return "fixed", "text"       # prose/boilerplate — flip to variable if needed
     return "variable", "text"
+
+
+# ── Row-groups (repeating table rows — the core of the family model) ─────────────
+# A row-group makes ONE body row of a table a repeating template row: at fill time the
+# engine clones that <w:tr> once per data item so the row count varies per project
+# (team members, deliverables, cost lines…). `propose` offers each data-table as a
+# candidate; the assisted review confirms which tables repeat, names the group and its
+# columns, and which rows are template vs. dropped; `build` tags the template row's
+# cells and records the group in the manifest. docx only (see SKILL.md limitations).
+
+def detect_row_groups(doc) -> list[dict]:
+    """Offer each multi-row/-column body table as a candidate row-group for review."""
+    cands = []
+    for idx, tbl in enumerate(C.all_docx_tables(doc)):
+        rows = tbl.rows
+        if len(rows) < 2:
+            continue
+        header = [c.text.strip() for c in rows[0].cells]
+        if len(header) < 2:
+            continue
+        # snake_case column name per header cell, made unique
+        columns, used = [], set()
+        for i, h in enumerate(header):
+            base = C.slugify(h) or f"col_{i + 1}"
+            name, k = base, 2
+            while name in used:
+                name, k = f"{base}_{k}", k + 1
+            used.add(name)
+            columns.append(name)
+        cands.append({
+            "table_index": idx,
+            "header": header,
+            "sample_row": [c.text.strip() for c in rows[1].cells],
+            "n_rows": len(rows),
+            "suggest_name": C.slugify(header[0]) or f"table_{idx}",
+            "suggest_columns": columns,
+            "template_row_index": 1,          # first body row becomes the repeating row
+            "drop_rows": list(range(2, len(rows))),  # surplus example rows to delete
+            "keep": "fixed",                  # set 'variable' to activate as a row-group
+        })
+    return cands
+
+
+def _tag_cell(cell, tag: str) -> None:
+    """Replace a cell's content with a single {{ tag }}, preserving the first run's
+    formatting (font/size/bold) and REMOVING extra paragraphs — so no empty bullet or
+    blank line survives in the repeating row."""
+    paras = cell.paragraphs
+    for p in paras[1:]:
+        p._p.getparent().remove(p._p)
+    runs = paras[0].runs
+    if runs:
+        runs[0].text = tag
+        for r in runs[1:]:
+            r.text = ""
+    else:
+        paras[0].add_run(tag)
+
+
+def apply_row_groups(doc, proposal: dict) -> list[dict]:
+    """For each confirmed (keep='variable') row-group candidate: tag its template row's
+    cells with {{ column }}, delete the surplus example rows, and return the manifest
+    `row_groups` list. fill.expand_row_groups later finds the template row by its
+    {{ columns[0] }} tag and clones it per data item."""
+    tables = C.all_docx_tables(doc)
+    groups = []
+    for rg in proposal.get("row_group_candidates", []):
+        if rg.get("keep") != "variable":
+            continue
+        ti = rg.get("table_index")
+        if ti is None or ti >= len(tables):
+            continue
+        columns = [C.slugify(c) for c in (rg.get("columns") or rg.get("suggest_columns") or [])]
+        if not columns:
+            continue
+        name = C.slugify(rg.get("name") or rg.get("suggest_name") or f"table_{ti}")
+        rows = list(tables[ti].rows)
+        tri = rg.get("template_row_index", 1)
+        if tri >= len(rows):
+            continue
+        for i, col in enumerate(columns):
+            if i < len(rows[tri].cells):
+                _tag_cell(rows[tri].cells[i], C.placeholder(col))
+        for di in sorted(set(rg.get("drop_rows", [])), reverse=True):
+            if di != tri and 0 <= di < len(rows):
+                rows[di]._tr.getparent().remove(rows[di]._tr)
+        groups.append({"name": name, "columns": columns})
+    return groups
 
 
 def propose(args):
@@ -164,6 +262,10 @@ def propose(args):
     candidates = sorted(by_value.values(), key=lambda c: (-len(c["current_text"])))
     candidates += image_candidates      # images last; not length-sorted with text
     unsupported = C.iter_unsupported_objects(path)
+    # Row-group candidates: variable-count table rows (docx only). The review step marks
+    # which tables actually repeat; a repeating table should be a row-group, NOT a set of
+    # per-cell text fields (mark its cell values keep='remove'/'fixed' to avoid overlap).
+    row_group_candidates = detect_row_groups(_doc) if fmt == "docx" else []
     proposal = {
         "format": fmt,
         "source_file": str(path),
@@ -175,15 +277,26 @@ def propose(args):
             "regenerate). For a repeating list, mark ONE representative line "
             "keep='variable' + suggest_type='list', and mark the other example lines "
             "keep='remove'. Rename suggest_name to a clean snake_case field. Delete "
-            "candidates you don't care about. Then: templatize.py build --file <file> "
-            "--fields <this>."
+            "candidates you don't care about. For a table whose ROW COUNT varies per "
+            "project (team, deliverables, costs), set keep='variable' on its "
+            "row_group_candidate (rename name/columns; adjust template_row_index & "
+            "drop_rows), and set its cell values keep='remove' in candidates above. "
+            "Then: templatize.py build --file <file> --fields <this> --family <family> "
+            "[--source-terms 'ProjectName,CODE,2024/01/01,Domain Term']."
         ),
         "candidates": candidates,
+        "row_group_candidates": row_group_candidates,
     }
     out = Path(args.out)
     out.write_text(json.dumps(proposal, indent=2, ensure_ascii=False), encoding="utf-8")
     n_var = sum(1 for c in candidates if c["keep"] == "variable")
     print(f"Proposed {len(candidates)} candidates ({n_var} variable) -> {out}")
+    if row_group_candidates:
+        print(f"Detected {len(row_group_candidates)} table(s) as row-group candidates "
+              f"(variable row counts) — confirm which repeat in the review step:")
+        for rg in row_group_candidates:
+            print(f"  - table[{rg['table_index']}] {rg['n_rows']} rows, "
+                  f"columns {rg['suggest_columns']}")
     if unsupported:
         print(f"WARNING: {len(unsupported)} unsupported object(s) — SmartArt/chart text is "
               f"NOT fillable (the fill keeps the source's content). Rebuild these as native "
@@ -206,6 +319,15 @@ def build(args):
     fmt, doc, paragraphs = load(path)
     if fmt != proposal.get("format"):
         sys.exit(f"Proposal format '{proposal.get('format')}' != file format '{fmt}'.")
+
+    # Row-groups FIRST (docx): tag each confirmed table's template row and drop its
+    # surplus example rows, so the paragraph passes below run over the FINAL table
+    # structure (and stale rows/cells can't linger as leftover text or residue).
+    row_groups = []
+    if fmt == "docx":
+        row_groups = apply_row_groups(doc, proposal)
+        if row_groups:
+            paragraphs = list(C.iter_docx_paragraphs(doc))
 
     # Remove extra example paragraphs first (e.g. surplus bullets/rows a `list` field
     # will regenerate). Match on exact stripped text so we only drop intended lines.
@@ -248,7 +370,18 @@ def build(args):
             required=True,
         ))
 
-    tdir = C.template_dir(args.client, args.doc_type)
+    # Family model (default) vs. per-client instance. A family template lives under
+    # registry/_families/<family>/ and is what future files of that family converge to.
+    if args.family:
+        tdir = C.family_dir(args.family)
+        client_id, doc_type_id = "_families", C.slugify(args.family)
+        template_id = f"_families/{doc_type_id}"
+    elif args.client and args.doc_type:
+        tdir = C.template_dir(args.client, args.doc_type)
+        client_id, doc_type_id = C.slugify(args.client), C.slugify(args.doc_type)
+        template_id = f"{client_id}/{doc_type_id}"
+    else:
+        sys.exit("Provide --family <name> (the family model), or --client and --doc-type.")
     tdir.mkdir(parents=True, exist_ok=True)
     template_file = f"template.{fmt}"
     doc.save(str(tdir / template_file))
@@ -268,10 +401,11 @@ def build(args):
             warnings.append(f"'{c['current_text'][:40]}' -> {{{{ {name} }}}}: 0 matches "
                             "(text may span formatting boundaries oddly; check manually)")
 
+    source_terms = [t.strip() for t in (args.source_terms or "").split(",") if t.strip()]
     manifest = C.Manifest(
-        template_id=f"{C.slugify(args.client)}/{C.slugify(args.doc_type)}",
-        client=C.slugify(args.client),
-        doc_type=C.slugify(args.doc_type),
+        template_id=template_id,
+        client=client_id,
+        doc_type=doc_type_id,
         format=fmt,
         template_file=template_file,
         source_file=Path(path).name,
@@ -279,12 +413,20 @@ def build(args):
         created=args.created,
         changelog=[f"{args.created} v1.0.0 templatized from {Path(path).name}"] if args.created else [],
         fields=fields,
+        row_groups=row_groups,
+        source_terms=source_terms,
     )
     C.save_manifest(manifest, tdir / "manifest.json")
 
-    print(f"Template registered: {manifest.template_id}  ({len(fields)} fields, {fmt})")
+    print(f"Template registered: {manifest.template_id}  ({len(fields)} fields, "
+          f"{len(row_groups)} row-group(s), {fmt})")
     print(f"  {tdir / template_file}")
     print(f"  {tdir / 'manifest.json'}")
+    if row_groups:
+        for g in row_groups:
+            print(f"  row-group '{g['name']}' columns {g['columns']}")
+    if source_terms:
+        print(f"  source_terms (must not survive a fill): {source_terms}")
     for w in warnings:
         print(f"  WARNING: {w}")
 
@@ -301,8 +443,13 @@ def main():
     b = sub.add_parser("build", help="Inject placeholders and register the template")
     b.add_argument("--file", required=True, help="Same client file as `propose`")
     b.add_argument("--fields", required=True, help="Reviewed proposal JSON")
-    b.add_argument("--client", required=True)
-    b.add_argument("--doc-type", required=True)
+    b.add_argument("--family", help="Family name -> registry/_families/<family>/ "
+                                    "(the family model; preferred over --client/--doc-type)")
+    b.add_argument("--client", help="Per-client instance (use --family instead by default)")
+    b.add_argument("--doc-type", help="Per-client instance doc type")
+    b.add_argument("--source-terms", default="",
+                   help="Comma-separated source-exemplar terms that must NOT survive a "
+                        "fill (client/project/code/dates/domain terms; not recurring people)")
     b.add_argument("--owner", default="")
     b.add_argument("--created", default="", help="ISO date (scripts have no clock)")
     b.set_defaults(func=build)

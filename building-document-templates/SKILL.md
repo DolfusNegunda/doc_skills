@@ -116,11 +116,12 @@ not promise fully-automatic detection; the confirm step is where correctness com
 ```
 Progress:
 - [ ] 0. See it: render the source page-by-page and inspect layout, structure & branding
-- [ ] 1. Propose: extract candidate variable fields from the example file
-- [ ] 2. Review: confirm WITH THE USER what to preserve vs. vary; mark keep/name/type
-- [ ] 3. Build: inject placeholders and register the template + manifest
-- [ ] 4. Fill: supply data keyed by the manifest fields -> finished document
-- [ ] 5. Validate: no leftover tags, structure intact (required)
+- [ ] 1. Propose: extract candidate fields + property leaves + image slots + row-group tables
+- [ ] 2. Review: confirm WITH THE USER what to preserve vs. vary; mark keep/name/type;
+         activate row-groups for variable-count tables; set source_terms
+- [ ] 3. Build --family: inject placeholders + row-groups, record source_terms, register canonical
+- [ ] 4. Fill: supply data keyed by the manifest fields (row-groups take arrays of dicts)
+- [ ] 5. Validate: no leftover tags, structure intact, EMPTY source_residue (required)
 - [ ] 6. QA by vision: render the OUTPUT page-by-page, compare to source, fix drift
 ```
 
@@ -139,49 +140,66 @@ python scripts/templatize.py propose --file client_qbr.docx --out proposal.json
 ```
 Reads the file and writes every candidate value (deduped — the same client name in
 five places becomes one field), with a heuristic name (from `Label: value` lines) and
-a suggested keep/type.
+a suggested keep/type. It ALSO surfaces: cover **property leaves** (data-bound cover
+title/subtitle/date), **image slots**, flagged **unsupported objects** (SmartArt/
+charts), and — for `.docx` — every data-table as a **row-group candidate** (a table
+whose row count varies per project).
 
-**Step 2 — Review (the assisted step). Confirm the preserve list with the user.**
-Before editing, ask what must be *preserved* (brand colours, logos, cover, header/
-footer, mandatory clauses, table styles) and what *varies* each time — then use their
-answer to set the split. Offer to swap logos/images per client (see image placeholders
-below). Edit `proposal.json`; for each candidate set:
+**Step 2 — Review (the assisted step). Confirm the split with the user, section by
+section AND image by image (HARD RULE 2).** Ask what must be *preserved* (brand
+colours, logos, cover, header/footer, mandatory clauses, table styles) and what
+*varies* each time. Edit `proposal.json`; for each candidate set:
 - `keep`: `variable` (filled each time), `fixed` (boilerplate that stays), or `remove`
   (drop this line — use for surplus example bullets/rows a `list` field regenerates).
 - `suggest_name`: a clean `snake_case` field name.
 - `suggest_type`: `text` (default) or `list` (a repeating bullet/row).
 
 For a repeating list, mark **one** representative line `variable` + `list` and mark the
-other example lines `remove`.
+other example lines `remove`. **For a table whose ROW COUNT varies** (team,
+deliverables, costs), set `keep: variable` on its entry in `row_group_candidates`
+(rename `name`/`columns`; adjust `template_row_index` & `drop_rows`), and set that
+table's cell values `keep: fixed` in `candidates` — a repeating table is a row-group,
+NOT a set of per-cell fields.
 
-**Step 3 — Build.**
+**Step 3 — Build (family model by default).**
 ```bash
 python scripts/templatize.py build --file client_qbr.docx --fields proposal.json \
-    --client globex --doc-type quarterly-review \
-    --owner you@co.com --created 2026-07-13
+    --family lessons-learned --owner you@co.com --created 2026-07-13 \
+    --source-terms "Acme Corp,PRJ-1935,2024/03/10,Fragmentation"
 ```
-Injects placeholders (longest values first, so `Q3 2026` is tagged before a bare `Q3`),
-removes the lines you marked, and writes `template.<fmt>` + `manifest.json` into the
-gallery. Pass `--created` explicitly (scripts have no clock).
+`--family <name>` registers the canonical under `registry/_families/<family>/` — the
+one template that family converges to. (`--client X --doc-type Y` still makes a
+per-client instance for a genuine structural exception.) Build injects placeholders
+(longest values first, so `Q3 2026` is tagged before a bare `Q3`), turns the confirmed
+tables into repeating **row-groups**, records **`source_terms`** in the manifest, and
+writes `template.<fmt>` + `manifest.json`. `--source-terms` are the source exemplar's
+IDENTIFYING terms (client/project/code/dates/domain) that must NOT survive a later fill
+— never recurring people. Pass `--created` explicitly (scripts have no clock).
 
 **Step 4 — Fill.** Discover what a template needs, then fill it:
 ```bash
-python scripts/registry.py show --client globex --doc-type quarterly-review
-python scripts/fill.py --client globex --doc-type quarterly-review \
-    --data content.json --out out/initech-q4.docx [--export-pdf]
+python scripts/registry.py show --client _families --doc-type lessons-learned
+python scripts/fill.py --template registry/_families/lessons_learned/template.docx \
+    --manifest registry/_families/lessons_learned/manifest.json \
+    --data content.json --out out/ll-2026.docx [--export-pdf]
 ```
-`content.json` is `{field_name: value}` (a `list` field takes a JSON array — it expands
-into real bullets/rows, not one comma-joined line). The document *content* can come
-from a writing skill (e.g. `writing-status-reports`); this engine renders it into the
-locked format.
+`content.json` is `{field_name: value}`. A `list` field takes a JSON array (expands to
+real bullets). A **row-group** field takes a JSON array of dicts keyed by its column
+names (`"team": [{"name": "...", "role": "...", ...}, ...]`) — the table row is cloned
+once per item, so the row count matches the data. The *content* can come from a writing
+skill; this engine renders it into the locked format.
 
-**Step 5 — Validate (required).**
+**Step 5 — Validate (required — now includes source-residue).**
 ```bash
-# note: the registry slugifies the doc-type, so the folder is quarterly_review (underscore)
-python scripts/validate.py out/initech-q4.docx --template registry/globex/quarterly_review/template.docx
+python scripts/validate.py out/ll-2026.docx \
+    --template registry/_families/lessons_learned/template.docx \
+    --manifest registry/_families/lessons_learned/manifest.json
 ```
-Fails with specific messages on any leftover `{{ tag }}`, empty content, or changed
-structure (section/slide count). **Do not ship anything that isn't `"status": "OK"`.**
+Fails on any leftover `{{ tag }}`, empty content, changed structure (section/slide
+count), or **surviving `source_terms`** (pass `--manifest` so it reads them; residue is
+the check that "no leftover tags" alone misses). Surfaces `unsupported_objects` for the
+vision pass to eyeball. **Do not ship anything that isn't `"status": "OK"` with an empty
+`source_residue`.**
 
 **Step 6 — QA by vision (required for anything shipped to a client).** `validate.py`
 reads text; it cannot see layout. Render the output and Read every page:
@@ -267,8 +285,15 @@ build, classify every embedded image:
 
 ## Now supported (previously limitations)
 - **Variable-count table rows** — `row_group` fields expand a table's template row per
-  data item (proven on Lessons Learned: one canonical template filled from differently-
-  sized source files, rows growing to match). Word `.docx` only.
+  data item. Derived through the DOCUMENTED engine: `propose` detects data-tables as
+  row-group candidates, the review activates them, and `build` tags the template row +
+  drops surplus rows + records the group in the manifest (Word `.docx` only). Proven on
+  Lessons Learned and Change Note, and on the synthetic family example (source rows
+  2/3/2 filled to 3/2/4, residue-clean). See
+  [examples/family-README.md](examples/family-README.md) for the full worked run.
+- **Family derivation is a command, not a bespoke script** — `build --family` +
+  `--source-terms` emit `row_groups` and `source_terms` into the manifest that `fill`
+  and `validate` consume. One documented path derives any family's canonical template.
 - **Reuse safety** — the source-residue check catches stale source content that a
   leftover-tag check alone misses.
 
@@ -308,4 +333,6 @@ metrics as variable and the bullet list as a `list` field → `build` registers
 `globex/board-deck` (template.pptx + manifest.json) → next quarter, `registry.py show`
 reveals the fields, `fill.py` renders a new deck from `content.json`, `validate.py`
 confirms no placeholder was missed. Same masters, fonts, and layout every time — only
-the content changes. See [examples/README.md](examples/README.md) for the full run.
+the content changes. See [examples/README.md](examples/README.md) for the full run, and
+[examples/family-README.md](examples/family-README.md) for the **family** derivation
+(row-groups + data-bound cover + source-residue) end to end.

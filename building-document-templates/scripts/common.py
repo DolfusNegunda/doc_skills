@@ -128,6 +128,13 @@ def template_dir(client: str, doc_type: str) -> Path:
     return REGISTRY / slugify(client) / slugify(doc_type)
 
 
+def family_dir(family: str) -> Path:
+    """registry/_families/<family>/ — the GOVERNED canonical template for a document
+    family (Lessons Learned, Change Note, …). This is the default home for a template
+    in the family model; per-client dirs are the exception, not the rule."""
+    return REGISTRY / "_families" / slugify(family)
+
+
 def find_template(client: str, doc_type: str) -> tuple[Path, dict]:
     """Resolve a registered template. Returns (template_path, manifest_dict)."""
     d = template_dir(client, doc_type)
@@ -230,6 +237,27 @@ def iter_pptx_paragraphs(prs):
 def para_text(paragraph) -> str:
     """Concatenated text of a paragraph's runs (works for docx and pptx)."""
     return "".join(run.text for run in paragraph.runs)
+
+
+def all_docx_tables(doc):
+    """Every table in the body, in document order, recursing into nested tables.
+
+    Row-groups (repeating rows) live in body content tables. This is the ONE
+    enumeration `templatize.propose` (which assigns a table_index), `templatize.build`
+    (which tags that index's template row), and `fill.expand_row_groups` all share, so
+    a row-group's table_index means the same thing at propose, build and fill time.
+    Header/footer tables are intentionally excluded — they are not row-group carriers."""
+    from docx.table import Table
+    out = []
+
+    def walk(tables):
+        for t in tables:
+            out.append(t)
+            for row in t.rows:
+                for cell in row.cells:
+                    walk(cell.tables)
+    walk(doc.tables)
+    return out
 
 
 # ── Document properties (cover pages & data-bound content controls) ──────────--

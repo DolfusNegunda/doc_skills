@@ -59,22 +59,6 @@ def expand_list(paragraph, tag, items, wrap):
         C.replace_in_paragraph(wrap(clone, parent), tag, str(item))
 
 
-def _all_docx_tables(doc):
-    """Every table in the body, recursing into nested tables (row-groups live in
-    body content tables). Header/footer tables are not row-group carriers here."""
-    from docx.table import Table
-    out = []
-
-    def walk(tables):
-        for t in tables:
-            out.append(t)
-            for row in t.rows:
-                for cell in row.cells:
-                    walk(cell.tables)
-    walk(doc.tables)
-    return out
-
-
 def _fill_row_element(tr, columns, item):
     """Replace each column field's {{ tag }} inside one <w:tr> clone from `item`
     (a dict keyed by the column field names). Preserves each cell's formatting."""
@@ -103,7 +87,7 @@ def expand_row_groups(doc, row_groups, data):
             items = [items]
         tag0 = C.placeholder(columns[0])
         template_tr = None
-        for tbl in _all_docx_tables(doc):
+        for tbl in C.all_docx_tables(doc):
             for row in tbl.rows:
                 if any(tag0 in c.text for c in row.cells):
                     template_tr = row._tr

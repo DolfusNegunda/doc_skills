@@ -7,5 +7,10 @@ __pycache__/
 ~$*
 .DS_Store
 
+# Example source/output documents are REGENERATED from the committed scripts
+# (make_example_docx.py / make_family_example.py) — keep the binaries out of git.
+building-document-templates/examples/*.docx
+building-document-templates/examples/*.pptx
+
 # Local demo/scratch output — generated documents and renders, never pushed.
 output/

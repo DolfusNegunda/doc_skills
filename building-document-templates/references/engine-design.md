@@ -51,6 +51,50 @@ Turning N example bullets into one `list` field therefore needs the **other** ex
 bullets marked `keep=remove` so build deletes them; the single remaining tagged
 paragraph is what fill duplicates.
 
+## Row-groups (variable-count table rows — the family model, docx only)
+A `list` field stacks paragraphs inside ONE cell; a **row-group** clones a whole table
+`<w:tr>` per item, so real rows grow/shrink. This is what makes a family template hold
+a team/deliverables/costs table whose row count differs per project.
+
+Shared table enumeration — `common.all_docx_tables(doc)` walks body tables in document
+order (recursing into nested tables; header/footer tables excluded). `propose`, `build`
+and `fill` all use it, so a candidate's `table_index` means the same table at every
+stage.
+
+- **propose** (`detect_row_groups`) — offers each multi-row/-column body table as a
+  `row_group_candidate`: `table_index`, `header`, a `sample_row`, `suggest_name`,
+  snake_case `suggest_columns` (one per header cell), `template_row_index` (default 1 —
+  the first body row) and `drop_rows` (the surplus example rows). Default `keep=fixed`.
+- **review** — set `keep=variable` on the tables that repeat; rename `name`/`columns`;
+  adjust `template_row_index`/`drop_rows` (e.g. keep a trailing totals row out of
+  `drop_rows`). Set that table's cell values `keep=fixed` in `candidates` so they are
+  not also tagged as scalar fields.
+- **build** (`apply_row_groups`) — for each activated group: `_tag_cell` rewrites the
+  template row's cells to a single `{{ column }}` tag (preserving the first run's
+  formatting, removing extra paragraphs so no empty bullet survives), deletes the
+  `drop_rows`, and records `{name, columns}` in `manifest.row_groups`. Runs BEFORE the
+  paragraph passes so they see the final table.
+- **fill** (`expand_row_groups`) — locates the template `<w:tr>` by the `{{ columns[0] }}`
+  tag, deep-copies it once per `data[name]` item (a dict keyed by the column names),
+  fills each clone. An empty/missing list removes the template row (header stays).
+
+Merged cells: python-docx repeats a horizontally-merged cell across grid columns, so a
+merged header inflates the column list — the review step fixes `columns` by hand.
+
+## Cover properties, image slots, unsupported objects
+- **Property leaves** — Word cover pages render title/subtitle/date from data-bound
+  parts (`docProps/core.xml`, `customXml` CoverPageProperties), not body runs. `propose`
+  surfaces them (`iter_property_leaves`), `build` tags them via `patch_property_parts`,
+  `fill` replaces them, `validate` scans them. Without this the body updates but the
+  cover keeps the source client's values.
+- **Image slots** — each embedded media part is a swappable slot (`iter_image_slots`);
+  mark `variable` to swap per fill (`swap_media_parts` re-encodes to the slot's format,
+  geometry preserved). Project-specific figures become labelled placeholders.
+- **Unsupported objects** — `iter_unsupported_objects` finds SmartArt (`diagrams/data*.xml`)
+  and native charts (`charts/chart*.xml`); their text is not a normal run, so the fill
+  can't touch it. `propose` warns, `validate` surfaces them for the vision pass. Flag,
+  never fake.
+
 ## The manifest
 `manifest.json` is the contract that lets a future fill happen without re-reading the
 document:
@@ -67,22 +111,33 @@ document:
      "guidance": "Fills: Client", "required": true},
     {"name": "achievements", "type": "list", "example": "Launched the new analytics portal",
      "guidance": "", "required": true}
-  ]
+  ],
+  "row_groups": [
+    {"name": "team", "columns": ["name", "role", "allocation"]}
+  ],
+  "source_terms": ["Globex Corporation", "PRJ-1935", "2024/03/10"]
 }
 ```
 `example` is the value seen in the source — a ready-made sample for whoever fills it.
+`row_groups` drives table-row expansion; `source_terms` drives the residue check. Both
+are emitted by `build` (`--source-terms` + activated row-group candidates) and consumed
+by `fill`/`validate` — see `examples/family-manifest.json` for a real derived manifest.
 
 ## The registry (gallery)
-`registry/<client>/<doc-type>/` holds `template.<fmt>` + `manifest.json`. Client and
-doc-type are slugified (`board-deck` → `board_deck`) consistently on write and lookup,
-so `--doc-type board-deck` always resolves. Set `$TEMPLATE_REGISTRY` to relocate the
-gallery to a shared, version-controlled folder outside the repo.
+`registry/<client>/<doc-type>/` holds `template.<fmt>` + `manifest.json`. In the family
+model the canonical lives at `registry/_families/<family>/` (`build --family <name>`,
+stored as client `_families`, doc_type `<family>`); per-client dirs are the structural
+exception. Client and doc-type are slugified (`board-deck` → `board_deck`) consistently
+on write and lookup. Set `$TEMPLATE_REGISTRY` to relocate the gallery to a shared,
+version-controlled folder outside the repo.
 
 ## Validation
 `validate.py` gates a filled file: no leftover `{{ }}`/`{% %}` tags anywhere (body,
-tables, headers/footers, slides, notes), non-empty content, and — when `--template` is
-given — unchanged section count (docx) / slide count (pptx). Exit code is non-zero
-unless `status == "OK"`.
+tables, headers/footers, slides, notes, cover property leaves), non-empty content, and
+— when `--template` is given — unchanged section count (docx) / slide count (pptx). With
+`--manifest`/`--source-terms` it also fails on any surviving **source-residue** ("no
+leftover tags" ≠ "successfully reused"), and reports `unsupported_objects` for the
+vision pass. Exit code is non-zero unless `status == "OK"`.
 
 ## Format notes & roadmap
 - **DOCX / PPTX** — fully supported (body, tables, headers/footers, speaker notes).

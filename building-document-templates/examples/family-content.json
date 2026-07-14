@@ -1,0 +1,22 @@
+{
+  "doc_title": "Contoso Logistics — Fleet Rollout Status",
+  "report_subtitle": "Monthly Project Status Report — CTS-2201",
+  "doc_subtitle": "Monthly Project Status Report",
+  "report_date": "2026/07/14",
+  "summary": "The regional fleet rollout is ahead of schedule, with three depots live and telemetry streaming to the central dashboard. Driver onboarding is the current focus for the coming period.",
+  "team": [
+    {"name": "Kofi Mensah", "role": "Programme Lead", "allocation": "0.6 FTE"},
+    {"name": "Lena Vogt", "role": "Fleet Systems Engineer", "allocation": "1.0 FTE"},
+    {"name": "Priya Nair", "role": "Change Manager", "allocation": "0.4 FTE"}
+  ],
+  "deliverables": [
+    {"item": "Depot telemetry", "description": "Live feeds from the three pilot depots", "status": "Done"},
+    {"item": "Driver app", "description": "Rollout to the northern region", "status": "In progress"}
+  ],
+  "metrics": [
+    {"metric": "Depots live", "value": "3 of 8"},
+    {"metric": "Vehicles onboarded", "value": "142"},
+    {"metric": "Schedule variance", "value": "+4 days"},
+    {"metric": "Open risks", "value": "5"}
+  ]
+}
