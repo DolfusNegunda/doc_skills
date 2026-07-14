@@ -163,9 +163,11 @@ def propose(args):
 
     candidates = sorted(by_value.values(), key=lambda c: (-len(c["current_text"])))
     candidates += image_candidates      # images last; not length-sorted with text
+    unsupported = C.iter_unsupported_objects(path)
     proposal = {
         "format": fmt,
         "source_file": str(path),
+        "unsupported_objects": unsupported,
         "instructions": (
             "Review each candidate and set keep to one of: 'variable' (filled each "
             "time), 'fixed' (boilerplate that stays), or 'remove' (delete this line — "
@@ -182,6 +184,12 @@ def propose(args):
     out.write_text(json.dumps(proposal, indent=2, ensure_ascii=False), encoding="utf-8")
     n_var = sum(1 for c in candidates if c["keep"] == "variable")
     print(f"Proposed {len(candidates)} candidates ({n_var} variable) -> {out}")
+    if unsupported:
+        print(f"WARNING: {len(unsupported)} unsupported object(s) — SmartArt/chart text is "
+              f"NOT fillable (the fill keeps the source's content). Rebuild these as native "
+              f"shapes/tables, or accept them as static:")
+        for u in unsupported:
+            print(f"  - {u['kind']}: {u['part']} ({u['chars']} chars) e.g. {u['sample']}")
     print("Review/edit it, then run `templatize.py build`.")
 
 

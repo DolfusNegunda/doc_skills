@@ -22,7 +22,24 @@ from pathlib import Path
 import common as C
 
 
-def docx_report(path: Path, template: Path | None):
+def _residue_errors(texts, source_terms):
+    """Flag source-exemplar content that should have been replaced by the fill.
+
+    'No leftover placeholders' is NOT the same as 'successfully reused': a fill can
+    keep the source's client/project/dates and still have zero {{ tags }}. Given the
+    terms the canonical template was learned from, fail if any survive in the output.
+    Case-insensitive substring match; short/ambiguous terms (<4 chars) are skipped."""
+    if not source_terms:
+        return [], []
+    blob = "\n".join(texts).lower()
+    found = sorted({t for t in source_terms
+                    if len(t.strip()) >= 4 and t.strip().lower() in blob})
+    if found:
+        return [f"Source-exemplar content still present (not replaced): {found}"], found
+    return [], []
+
+
+def docx_report(path: Path, template: Path | None, source_terms):
     from docx import Document
     doc = Document(str(path))
     texts = [C.para_text(p) for p in C.iter_docx_paragraphs(doc)]
@@ -36,6 +53,12 @@ def docx_report(path: Path, template: Path | None):
     if checks["nonempty_paragraphs"] == 0:
         errors.append("Document has no text content.")
 
+    res_err, res_found = _residue_errors(texts, source_terms)
+    errors += res_err
+    checks["source_residue"] = res_found
+    # Informational: SmartArt/chart text the fill can't touch — QA must eyeball these.
+    checks["unsupported_objects"] = [f"{u['kind']}:{u['part']}" for u in C.iter_unsupported_objects(path)]
+
     if template and template.exists():
         tdoc = Document(str(template))
         t_sections = len(tdoc.sections)
@@ -47,7 +70,7 @@ def docx_report(path: Path, template: Path | None):
     return errors, checks
 
 
-def pptx_report(path: Path, template: Path | None):
+def pptx_report(path: Path, template: Path | None, source_terms):
     from pptx import Presentation
     prs = Presentation(str(path))
     texts = [C.para_text(p) for p in C.iter_pptx_paragraphs(prs)]
@@ -60,6 +83,12 @@ def pptx_report(path: Path, template: Path | None):
     checks["n_slides"] = len(prs.slides)
     if checks["n_slides"] == 0:
         errors.append("Deck has no slides.")
+
+    res_err, res_found = _residue_errors(texts, source_terms)
+    errors += res_err
+    checks["source_residue"] = res_found
+    # Informational: SmartArt/chart text the fill can't touch — QA must eyeball these.
+    checks["unsupported_objects"] = [f"{u['kind']}:{u['part']}" for u in C.iter_unsupported_objects(path)]
 
     if template and template.exists():
         tprs = Presentation(str(template))
@@ -75,6 +104,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("file")
     ap.add_argument("--template", default=None, help="Compare structure against this template")
+    ap.add_argument("--manifest", default=None,
+                    help="Manifest to read source_terms from (source-residue check)")
+    ap.add_argument("--source-terms", default=None,
+                    help="Comma-separated source terms that must NOT survive the fill")
     args = ap.parse_args()
 
     path = Path(args.file)
@@ -83,7 +116,14 @@ def main():
     template = Path(args.template) if args.template else None
     fmt = C.detect_format(path)
 
-    errors, checks = (docx_report if fmt == "docx" else pptx_report)(path, template)
+    # Source-residue terms: from --manifest's source_terms and/or --source-terms.
+    source_terms = []
+    if args.manifest and Path(args.manifest).exists():
+        source_terms += C.load_manifest(Path(args.manifest)).get("source_terms", [])
+    if args.source_terms:
+        source_terms += [t.strip() for t in args.source_terms.split(",") if t.strip()]
+
+    errors, checks = (docx_report if fmt == "docx" else pptx_report)(path, template, source_terms)
     report = {
         "file": str(path),
         "format": fmt,

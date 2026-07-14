@@ -100,6 +100,8 @@ class Manifest:
     created: str = ""               # ISO date; caller stamps it (no clock in scripts)
     changelog: list = dc_field(default_factory=list)
     fields: list = dc_field(default_factory=list)  # list[Field]
+    row_groups: list = dc_field(default_factory=list)  # repeating table rows: {name, columns:[field,...]}
+    source_terms: list = dc_field(default_factory=list)  # source-exemplar terms that must not survive a fill
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -522,6 +524,42 @@ def swap_media_parts(path: str | Path, out_path: str | Path,
             zout.writestr(info, new_bytes.get(info.filename, data))
     os.replace(tmp.name, str(out_path))
     return len(new_bytes)
+
+
+def iter_unsupported_objects(path: str | Path) -> list[dict]:
+    """Find content the engine CANNOT fill: SmartArt/diagram text and native charts.
+
+    Text inside a SmartArt/diagram (``diagrams/data*.xml``) or a chart
+    (``charts/chart*.xml``) is not a normal text run — python-docx/pptx never see it,
+    so the fill leaves the source's content in place. Rather than silently ship stale
+    text, `propose` surfaces these and QA flags them. Returns dicts:
+    {kind, part, chars, sample} — kind in {'smartart','chart'}."""
+    import re as _re
+    import zipfile
+
+    out: list[dict] = []
+    try:
+        z = zipfile.ZipFile(str(path))
+    except (zipfile.BadZipFile, FileNotFoundError):
+        return out
+    with z:
+        for n in z.namelist():
+            kind = None
+            if _re.search(r"diagrams/data\d*\.xml$", n):
+                kind = "smartart"
+            elif _re.search(r"charts/chart\d*\.xml$", n):
+                kind = "chart"
+            if not kind:
+                continue
+            xml = z.read(n).decode("utf-8", "ignore")
+            texts = [t for t in _re.findall(r"<a:t>(.*?)</a:t>", xml) if t.strip()]
+            out.append({
+                "kind": kind,
+                "part": n,
+                "chars": sum(len(t) for t in texts),
+                "sample": "; ".join(texts[:5])[:120],
+            })
+    return out
 
 
 def replace_in_paragraph(paragraph, old: str, new: str) -> int:
