@@ -5,6 +5,28 @@ description: Turn a client's existing Word (.docx) or PowerPoint (.pptx) file in
 
 # Building Document Templates
 
+## HARD RULES (read first — violating these produced broken output)
+1. **Use the engine. Never hand-edit the file.** You MUST go through
+   `templatize.py` → `fill.py`. Do **not** open the document and set text yourself
+   (no `text_frame.text = …`, no `paragraph.text = …`, no rebuilding shapes/slides,
+   no writing your own python-docx/pptx edit script). Naive text-setting **strips run
+   formatting** (bold, size, font, colour) — it is exactly why a filled cover title
+   comes out in the wrong font. The engine's replacement preserves the run's formatting;
+   your hand edit will not.
+2. **Confirm EVERY section before building.** Go through the whole document section by
+   section (cover, intro, objectives, definition-of-victory/scope, team, timeline,
+   communication, next steps, appendix…) and ask the user what changes in each. Do not
+   silently leave project-specific sections (e.g. Definition of Victory, team) with the
+   previous project's content. If a section needs new content, it must become fields.
+3. **Vision-QA is mandatory.** After filling, render the output with `render_pages.py`
+   and Read every page. Confirm: title/heading fonts preserved, the cover updated,
+   logos swapped where intended, nothing overflows or misaligns, no stale content.
+4. **Swap logos and fix metadata explicitly.** A client logo that should change must be
+   an **image slot**; the document Title/date on a cover is often a **property** — set
+   both up as fields, or they silently keep the source client's values.
+5. **Never claim a change you did not verify by rendering.** Report only what the vision
+   pass confirms.
+
 ## Scope
 Turn a real example document into a reusable **template + manifest**, register it in
 a **gallery** keyed by client and document type, and **fill** it on demand to produce
