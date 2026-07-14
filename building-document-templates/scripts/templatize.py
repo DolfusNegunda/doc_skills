@@ -252,6 +252,8 @@ def build(args):
     C.patch_property_parts(tdir / template_file, tdir / template_file,
                            C.ordered_replacer(prop_pairs, prop_stats))
     for c in variables:
+        if c.get("source") == "image":
+            continue   # image slots are keyed by media part, not by text tags
         name = C.slugify(c.get("suggest_name") or c["current_text"])
         tag = C.placeholder(name)
         if body_counts.get(tag, 0) == 0 and prop_stats.get(tag, 0) == 0:
