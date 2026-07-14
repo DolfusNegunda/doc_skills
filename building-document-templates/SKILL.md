@@ -204,6 +204,23 @@ omit it to keep the original.
 - A vision/image model can **generate** a missing asset to a slot's spec, then fill it in.
 - Needs `pip install pillow`. See [references/engine-design.md](references/engine-design.md).
 
+## Known limitations (state these honestly; don't fake them)
+- **SmartArt / diagram text is not readable or fillable.** Content inside a SmartArt
+  graphic or diagram `graphicFrame` (common for "meet the team" member cards, org charts,
+  process diagrams) is invisible to python-docx/pptx — no text frame — so the engine
+  leaves it as the source's. Workaround: rebuild those slides with normal shapes/tables
+  in the base template so they become fillable, or edit the SmartArt by hand.
+- **Repeating card blocks with images don't auto-clone.** Adding/removing e.g. a team
+  member card (photo + text group) is not automated; a `list` field grows bullets/rows,
+  not shape groups.
+- **No text autofit.** Filling a fixed box with content *longer* than the original can
+  overflow — keep replacements close to the original length, or the vision-QA pass will
+  catch it and you resize/trim. (Shorter is always safe.)
+- **Whole-paragraph fields lose inline emphasis.** If a whole paragraph that had a bold
+  phrase mid-sentence becomes one field, the replacement takes the paragraph's base run
+  formatting (size/font/colour preserved, mid-sentence bold not). Split into smaller
+  fields if the inline bold matters.
+
 ## Related skills
 - [authoring-word-documents](../authoring-word-documents/SKILL.md), [building-powerpoint-decks](../building-powerpoint-decks/SKILL.md) — build the one-off the template is learned from.
 - [producing-branded-documents](../producing-branded-documents/SKILL.md) — brand/logo rendering pipeline.
