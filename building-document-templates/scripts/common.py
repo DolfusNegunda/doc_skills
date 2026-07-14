@@ -148,7 +148,9 @@ def find_template(client: str, doc_type: str) -> tuple[Path, dict]:
 
 def _iter_docx_elem(element, parent):
     """Yield paragraphs under an lxml element (body or table cell), in document
-    order, recursing into nested tables."""
+    order, recursing into nested tables and content controls (w:sdt). Cover-page
+    building blocks wrap the title/subtitle in block-level content controls, so
+    without the sdt recursion that text is invisible to the fill."""
     from docx.table import Table
     from docx.text.paragraph import Paragraph
     from docx.oxml.ns import qn
@@ -161,11 +163,30 @@ def _iter_docx_elem(element, parent):
             for row in table.rows:
                 for cell in row.cells:
                     yield from _iter_docx_elem(cell._element, cell)
+        elif child.tag == qn("w:sdt"):
+            content = child.find(qn("w:sdtContent"))
+            if content is not None:
+                yield from _iter_docx_elem(content, parent)
+
+
+def _iter_textbox_paras(root, parent):
+    """Yield paragraphs inside text boxes / drawing canvases (w:txbxContent) anywhere
+    under `root`. Cover subtitles, callouts and sidebars often live in floating text
+    boxes, which the normal body walk never reaches. A DrawingML text box is usually
+    duplicated in an mc:AlternateContent (a modern Choice + a VML Fallback), so the
+    same text appears in two w:txbxContent — we yield both so a fill stays consistent."""
+    from docx.text.paragraph import Paragraph
+    from docx.oxml.ns import qn
+    for txbx in root.iter(qn("w:txbxContent")):
+        for p in txbx.iterchildren(qn("w:p")):
+            yield Paragraph(p, parent)
 
 
 def iter_docx_paragraphs(doc):
-    """Every paragraph in a .docx: body, tables (recursive), and headers/footers."""
+    """Every paragraph in a .docx: body, tables (recursive), content controls, text
+    boxes, and headers/footers."""
     yield from _iter_docx_elem(doc.element.body, doc._body)
+    yield from _iter_textbox_paras(doc.element.body, doc._body)
     for section in doc.sections:
         for hf in (section.header, section.footer,
                    section.first_page_header, section.first_page_footer,
@@ -176,6 +197,7 @@ def iter_docx_paragraphs(doc):
                 for row in table.rows:
                     for cell in row.cells:
                         yield from _iter_docx_elem(cell._element, cell)
+            yield from _iter_textbox_paras(hf._element, hf)
 
 
 def iter_pptx_paragraphs(prs):
