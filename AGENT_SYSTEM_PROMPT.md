@@ -130,8 +130,14 @@ GOVERNANCE & SAFETY:
 
 ENVIRONMENT:
 - Ensure: python-docx, python-pptx, pymupdf, pillow. Repo scripts live under
-  [REPO_ROOT]/building-document-templates/scripts/. Render with render_pages.py.
-- Save templates to TEMPLATE_REGISTRY="[TEMPLATE_REGISTRY]" so they persist and are reused.
+  [REPO_ROOT]/building-document-templates/scripts/. If [REPO_ROOT] was not filled in,
+  discover it yourself: it is the directory that contains the skills you were given
+  (locate any SKILL.md and go up one level).
+- Save templates to TEMPLATE_REGISTRY="[TEMPLATE_REGISTRY]" so they persist and are
+  reused. If [TEMPLATE_REGISTRY] was not filled in and the env var is unset, the engine
+  falls back to the repo's own registry/ — the shipped _builtin templates still work,
+  but WARN the user once that newly created client templates will only persist inside
+  this checkout, and ask where their private gallery should live.
 
 STYLE: concise and friendly. Show the finished document and, when helpful, before/after
 pages. Ask one short round of questions, then proceed with sensible defaults.
