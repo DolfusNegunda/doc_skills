@@ -16,6 +16,17 @@ brand application from [producing-branded-documents](../producing-branded-docume
 Produce a deck that is visually consistent, readable from the back of a room, and
 built on masters so it can be restyled or extended without manual cleanup.
 
+## Core principle: adapt the starter deck, don't reinvent it
+[assets/starter-template.pptx](assets/starter-template.pptx) is a complete, styled,
+16:9 deck with one example of each core layout (title, section divider, content,
+two-column, chart/evidence, closing). **Copy it and replace the content** — titles,
+bullets, chart data — keeping the geometry, palette, and type scale. It is the PPTX
+analog of the HTML skill's boilerplate: starting from a working, on-brand deck beats
+building a master from a blank file every time. Regenerate or restyle it with
+[scripts/build_starter_template.py](scripts/build_starter_template.py); the brand is a
+few tokens (`PALETTE`, `FONT`) at the top — change them and every slide re-skins, or
+drop the org's real `.potx` over the theme ("branding is data, not code").
+
 ## When to use this skill
 - "Make a PowerPoint / deck / slides / presentation."
 - "Turn this document/outline into slides."
@@ -43,21 +54,22 @@ built on masters so it can be restyled or extended without manual cleanup.
 ```
 Progress:
 - [ ] 1. Lock the narrative: one message per slide, in order
-- [ ] 2. Set up the master and 3–5 reusable layouts
+- [ ] 2. Copy assets/starter-template.pptx (or the org .potx); confirm the layouts you need
 - [ ] 3. Draft slides as headlines (the takeaway is the title)
 - [ ] 4. Add supporting visuals; one point per chart
 - [ ] 5. Apply consistent type, spacing, and color
 - [ ] 6. Add title, agenda, section dividers, and speaker notes
 - [ ] 7. Review for legibility, consistency, and slide count
-- [ ] 8. Validate & repair: run the validator, fix every error, re-run until clean
+- [ ] 8. Validate: run validate_pptx.py, fix every error, re-run until clean
+- [ ] 9. Vision QA: render_pptx.py, then Read every slide — fix overflow/overlap/off-brand, re-render
 ```
 
 **Step 1 — Narrative locked.** Do not open slide design until the story is set.
 Each slide earns its place by advancing one message.
 
-**Step 2 — Master first.** Define the slide master and a small set of layouts
-(title, section, content, two-column, full-bleed image, chart). Everything inherits
-from these; never format slides individually.
+**Step 2 — Start from the starter.** Copy [assets/starter-template.pptx](assets/starter-template.pptx)
+(or the organization's own `.potx`) and build on its layouts. Everything inherits
+from the master/theme; never format slides individually from a blank file.
 
 **Step 3 — Headline slides.** Write the *takeaway* as the slide title ("EMEA
 margin recovered to 18%"), not a topic label ("EMEA margin"). The body supports it.
@@ -75,16 +87,31 @@ Put detail in speaker notes, not on the slide.
 **Step 7 — Review.** Read every slide from across the room; cut any slide that
 doesn't advance the argument.
 
-**Step 8 — Validate & repair (mandatory before delivery).** Run the bundled
-validator, read its JSON `errors`, fix each, and **re-run until `status` is `OK`**:
+**Step 8 — Validate & repair (mandatory).** Run the bundled validator, read its JSON
+`errors`, fix each, and **re-run until `status` is `OK`**:
 
 ```bash
 python scripts/validate_pptx.py path/to/deck.pptx
 ```
 
 It fails on leftover placeholder text (`lorem ipsum`, `TBD`, `{{tag}}`, …) and warns
-on empty slides, title-less slides, and wall-of-text slides. Design judgment (the
-checklist below) still applies — the script catches the mechanical misses.
+on empty / title-less / wall-of-text slides, shapes that overflow the slide, explicit
+sub-18pt fonts, and low-DPI images. It reads *markup only* — it cannot resolve fonts
+inherited from the master, or see autofit shrink, overlap, or off-brand color.
+
+**Step 9 — Vision QA (mandatory before delivery).** Exactly like the HTML skill opens
+its deck in a browser: the validator reads structure, not looks. Render every slide
+and **Read each image**:
+
+```bash
+python scripts/render_pptx.py path/to/deck.pptx
+```
+
+This exports one PNG per slide (Microsoft PowerPoint via COM on Windows/Office; falls
+back to instructions for LibreOffice `--convert-to pdf`). Read every slide and confirm:
+text fits with no clipping/autofit-shrink/overlap, titles are the takeaway, alignment
+is consistent, each chart makes its one point, and color/contrast is on-brand. Fix in
+the deck and re-render. The two gates are complementary — ship only when both are clean.
 
 ## Principles
 1. **One idea per slide.** If a slide has two messages, split it.
@@ -92,6 +119,8 @@ checklist below) still applies — the script catches the mechanical misses.
 3. **Slides support the speaker; they are not the document.** Detail → notes/appendix.
 4. **Consistency via masters,** never per-slide formatting.
 5. **Signal over decoration.** Every element must earn its pixels.
+6. **See it before you send it.** A deck that passes the structural gate can still look
+   broken; render it and Read every slide. Structure gate + vision gate, both mandatory.
 
 ## Decision framework
 - **Presented live?** Minimal text, big visuals, notes carry detail.
@@ -107,15 +136,25 @@ checklist below) still applies — the script catches the mechanical misses.
 - **Tiny fonts** (<24pt body for live talks).
 - **Inconsistent alignment** — objects nudged by hand off any grid.
 
+## Portability (self-contained delivery)
+A deck sent to another machine can lose its look if fonts or images aren't inside the
+file — the analog of inlining Plotly in the HTML skill. Before sending:
+- **Images:** embed, don't link (python-pptx embeds by default; never reference a local path).
+- **Fonts:** embed them — PowerPoint → File ▸ Options ▸ Save ▸ *Embed fonts in the file*.
+  This is a manual PowerPoint step; python-pptx cannot embed fonts. If you can't embed,
+  stick to fonts every recipient has (e.g. the Office defaults) so nothing substitutes.
+
 ## Validation checklist
 - [ ] Every slide has one clear message stated in the title.
-- [ ] All slides use master layouts; no orphan formatting.
+- [ ] All slides use master/starter layouts; no orphan formatting.
 - [ ] Fonts, sizes, colors, and alignment are consistent throughout.
 - [ ] Body text ≥24pt for live presentation; readable from the back.
 - [ ] Each chart makes one point and is labeled directly.
 - [ ] Agenda + section dividers present; slide count fits the time.
 - [ ] Images high-resolution; alt text set; color-contrast sufficient.
 - [ ] Speaker notes carry the detail, not the slides.
+- [ ] `validate_pptx.py` returns `OK`; **vision pass** (render + Read) clean — no overflow, overlap, or off-brand color.
+- [ ] Portable: images embedded; fonts embedded or safe defaults only.
 
 ## Edge cases
 - **Board/exec decks:** lead with the ask/recommendation; appendix holds backup.
@@ -132,10 +171,17 @@ checklist below) still applies — the script catches the mechanical misses.
 ## Reference files
 - [references/deck-anatomy.md](references/deck-anatomy.md) — layouts, slide types, and typography rules.
 
+## Assets
+- [assets/starter-template.pptx](assets/starter-template.pptx) — the styled 16:9 boilerplate to copy (Step 2).
+
 ## Scripts
-- [scripts/validate_pptx.py](scripts/validate_pptx.py) — **run this** before delivery.
-  Fails on leftover placeholder text; warns on empty / title-less / wall-of-text
-  slides. JSON report, non-zero exit on error → drives the Step 8 loop. Requires `python-pptx`.
+- [scripts/validate_pptx.py](scripts/validate_pptx.py) — **Step 8 gate.** Fails on leftover
+  placeholder text; warns on empty / title-less / wall-of-text slides, overflowing shapes,
+  explicit sub-18pt fonts, and low-DPI images. JSON report, non-zero exit on error. `python-pptx`.
+- [scripts/render_pptx.py](scripts/render_pptx.py) — **Step 9 vision QA.** Renders one PNG
+  per slide (PowerPoint COM; LibreOffice fallback) so you can Read the actual look. `pywin32`.
+- [scripts/build_starter_template.py](scripts/build_starter_template.py) — (re)generates the
+  starter deck; edit `PALETTE`/`FONT` to re-brand. `python-pptx`.
 
 ## Examples
 **Input:** "Turn this 6-page strategy memo into a 10-slide board deck."

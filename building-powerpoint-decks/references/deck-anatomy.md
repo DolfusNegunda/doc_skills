@@ -1,7 +1,8 @@
 # Deck Anatomy
 
 Reusable layouts, slide types, and the typography/spacing rules that keep a deck
-consistent.
+consistent. The shipped [../assets/starter-template.pptx](../assets/starter-template.pptx)
+implements all of this — copy it and refill rather than rebuilding a master from scratch.
 
 ## Contents
 - The core layout set
@@ -9,9 +10,12 @@ consistent.
 - Typography
 - Color and spacing
 - Chart rules on slides
+- Brand tokens (swap)
+- Verify by rendering
 
 ## The core layout set
-Define these on the slide master; build every slide from one of them.
+Define these on the slide master; build every slide from one of them. The starter deck
+ships one worked example of each.
 1. **Title** — deck title, subtitle, presenter, date.
 2. **Section divider** — big number/word, section name.
 3. **Content** — headline title + body (bullets or single visual).
@@ -44,3 +48,19 @@ Define these on the slide master; build every slide from one of them.
 - Label series/values directly rather than forcing a legend lookup.
 - Bar for comparison, line for trend, no pie beyond 2–3 slices, never 3-D.
 - Highlight the one series that matters; grey the rest.
+
+## Brand tokens (swap)
+The starter deck's look is defined by a small set of tokens — `PALETTE` (background,
+ink, muted, accent×3, hairline, panel) and `FONT` — at the top of
+[../scripts/build_starter_template.py](../scripts/build_starter_template.py). Change
+those and regenerate to re-skin the entire deck, the same way the HTML skill swaps its
+`--accent` tokens. This keeps company identity as data, not code: for a real org, drop
+their `.potx`/theme in place of the neutral default rather than hand-editing slides.
+Keep two type roles and one accent for emphasis; don't introduce per-slide colors.
+
+## Verify by rendering
+Structure is necessary but not sufficient. `validate_pptx.py` reads markup; it cannot
+see autofit shrink, clipped or overlapping text, or off-brand color, and it cannot
+resolve font sizes inherited from the master. Always finish with
+[../scripts/render_pptx.py](../scripts/render_pptx.py) and Read every slide — the same
+render-and-look discipline the HTML skill applies in a browser.
