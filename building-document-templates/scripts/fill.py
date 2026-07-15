@@ -59,22 +59,6 @@ def expand_list(paragraph, tag, items, wrap):
         C.replace_in_paragraph(wrap(clone, parent), tag, str(item))
 
 
-def _all_docx_tables(doc):
-    """Every table in the body, recursing into nested tables (row-groups live in
-    body content tables). Header/footer tables are not row-group carriers here."""
-    from docx.table import Table
-    out = []
-
-    def walk(tables):
-        for t in tables:
-            out.append(t)
-            for row in t.rows:
-                for cell in row.cells:
-                    walk(cell.tables)
-    walk(doc.tables)
-    return out
-
-
 def _fill_row_element(tr, columns, item):
     """Replace each column field's {{ tag }} inside one <w:tr> clone from `item`
     (a dict keyed by the column field names). Preserves each cell's formatting."""
@@ -103,7 +87,7 @@ def expand_row_groups(doc, row_groups, data):
             items = [items]
         tag0 = C.placeholder(columns[0])
         template_tr = None
-        for tbl in _all_docx_tables(doc):
+        for tbl in C.all_docx_tables(doc):
             for row in tbl.rows:
                 if any(tag0 in c.text for c in row.cells):
                     template_tr = row._tr
@@ -219,6 +203,10 @@ def render(fmt, template_path, data, manifest, out_path):
             val = "; ".join(str(i) for i in items)
         prop_pairs.append((C.placeholder(name), "" if val is None else str(val)))
     C.patch_property_parts(out, out, C.ordered_replacer(prop_pairs))
+
+    # SmartArt text tags live in the diagram parts (data + cached drawing), not in body
+    # runs — fill them there too (no-op where the template has no SmartArt tags).
+    C.patch_smartart_parts(out, out, C.ordered_replacer(prop_pairs))
 
     # Swap image/logo slots: {media_part: new_image_path} from image-type fields whose
     # data value is a path. Unset image slots keep the original picture.

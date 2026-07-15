@@ -128,6 +128,13 @@ def template_dir(client: str, doc_type: str) -> Path:
     return REGISTRY / slugify(client) / slugify(doc_type)
 
 
+def family_dir(family: str) -> Path:
+    """registry/_families/<family>/ — the GOVERNED canonical template for a document
+    family (Lessons Learned, Change Note, …). This is the default home for a template
+    in the family model; per-client dirs are the exception, not the rule."""
+    return REGISTRY / "_families" / slugify(family)
+
+
 def find_template(client: str, doc_type: str) -> tuple[Path, dict]:
     """Resolve a registered template. Returns (template_path, manifest_dict)."""
     d = template_dir(client, doc_type)
@@ -230,6 +237,27 @@ def iter_pptx_paragraphs(prs):
 def para_text(paragraph) -> str:
     """Concatenated text of a paragraph's runs (works for docx and pptx)."""
     return "".join(run.text for run in paragraph.runs)
+
+
+def all_docx_tables(doc):
+    """Every table in the body, in document order, recursing into nested tables.
+
+    Row-groups (repeating rows) live in body content tables. This is the ONE
+    enumeration `templatize.propose` (which assigns a table_index), `templatize.build`
+    (which tags that index's template row), and `fill.expand_row_groups` all share, so
+    a row-group's table_index means the same thing at propose, build and fill time.
+    Header/footer tables are intentionally excluded — they are not row-group carriers."""
+    from docx.table import Table
+    out = []
+
+    def walk(tables):
+        for t in tables:
+            out.append(t)
+            for row in t.rows:
+                for cell in row.cells:
+                    walk(cell.tables)
+    walk(doc.tables)
+    return out
 
 
 # ── Document properties (cover pages & data-bound content controls) ──────────--
@@ -553,6 +581,10 @@ def iter_unsupported_objects(path: str | Path) -> list[dict]:
                 continue
             xml = z.read(n).decode("utf-8", "ignore")
             texts = [t for t in _re.findall(r"<a:t>(.*?)</a:t>", xml) if t.strip()]
+            # A SmartArt diagram that has been abstracted to an image (or fully blanked)
+            # carries no text — it is no longer an unfilled object, so don't flag it.
+            if kind == "smartart" and not texts:
+                continue
             out.append({
                 "kind": kind,
                 "part": n,
@@ -560,6 +592,202 @@ def iter_unsupported_objects(path: str | Path) -> list[dict]:
                 "sample": "; ".join(texts[:5])[:120],
             })
     return out
+
+
+# ── SmartArt (diagram) text — fillable for FIXED-structure diagrams ──────────────
+# SmartArt text is NOT a normal run (python-docx/pptx can't see it): it lives in
+# ``ppt|word/diagrams/data#.xml`` as <a:t> runs, mirrored in a cached ``drawing#.xml``
+# that LibreOffice/PowerPoint actually RENDER. So to fill SmartArt text we rewrite the
+# <a:t> content in BOTH parts (data keeps PowerPoint correct; drawing keeps the render
+# correct). This works when the node COUNT is fixed across projects — it changes text,
+# not structure. Variable-count SmartArt (add/remove team cards) needs the data model +
+# connections regenerated and can't be done here — rebuild those as a native table
+# (row-groups) or abstract them to an image placeholder (see smartart_to_placeholder).
+
+_SMARTART_PART_RE = re.compile(r"diagrams/(?:data|drawing)\d*\.xml$")
+_SMARTART_DATA_RE = re.compile(r"diagrams/data\d*\.xml$")
+_AT_RE = re.compile(r"(<a:t>)(.*?)(</a:t>)", re.S)
+
+
+def _xml_unescape(s: str) -> str:
+    from xml.sax.saxutils import unescape
+    return unescape(s)
+
+
+def _xml_escape(s: str) -> str:
+    from xml.sax.saxutils import escape
+    return escape(s)
+
+
+def smartart_texts(path: str | Path) -> list[dict]:
+    """Every <a:t> text in SmartArt DATA parts: {text, part}. Used by `propose` to
+    offer SmartArt text as candidates and by `validate` to scan it for leftover tags
+    and source residue (python-pptx never sees this text)."""
+    import zipfile
+    out: list[dict] = []
+    try:
+        z = zipfile.ZipFile(str(path))
+    except (zipfile.BadZipFile, FileNotFoundError):
+        return out
+    with z:
+        for n in z.namelist():
+            if not _SMARTART_DATA_RE.search(n):
+                continue
+            xml = z.read(n).decode("utf-8", "ignore")
+            for m in _AT_RE.finditer(xml):
+                if m.group(2).strip():
+                    # Return UNESCAPED text so candidates/residue terms are natural
+                    # ("A & B", not "A &amp; B"); patch re-escapes on write.
+                    out.append({"text": _xml_unescape(m.group(2)), "part": n})
+    return out
+
+
+def patch_smartart_parts(path: str | Path, out_path: str | Path, transform,
+                         only_parts: set | None = None) -> int:
+    """Apply `transform` to the text inside every <a:t> in SmartArt data+drawing parts
+    (optionally restricted to `only_parts` — e.g. one diagram's data+drawing), keeping
+    the data model and cached drawing in sync. Returns the number of <a:t> changed.
+    Safe when out_path == path."""
+    import os
+    import shutil
+    import tempfile
+    import zipfile
+
+    path = Path(path)
+    with zipfile.ZipFile(str(path)) as zin:
+        entries = [(i, zin.read(i.filename)) for i in zin.infolist()]
+
+    patched: dict[str, bytes] = {}
+    changed = 0
+    for info, data in entries:
+        n = info.filename
+        if not _SMARTART_PART_RE.search(n):
+            continue
+        if only_parts is not None and _diagram_index(n) not in only_parts:
+            continue
+        txt = data.decode("utf-8", "ignore")
+        cnt = [0]
+
+        def repl(m, _cnt=cnt):
+            # Work in UNESCAPED space so a tag/value that contains &, <, > matches and
+            # is re-escaped correctly — raw substitution into XML would break the part.
+            inner = _xml_unescape(m.group(2))
+            new = transform(inner)
+            if new != inner:
+                _cnt[0] += 1
+            return m.group(1) + _xml_escape(new) + m.group(3)
+
+        new_txt = _AT_RE.sub(repl, txt)
+        if new_txt != txt:
+            patched[n] = new_txt.encode("utf-8")
+            changed += cnt[0]
+
+    if not patched:
+        if str(out_path) != str(path):
+            shutil.copyfile(str(path), str(out_path))
+        return 0
+
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip",
+                                      dir=str(Path(out_path).parent))
+    tmp.close()
+    with zipfile.ZipFile(tmp.name, "w", zipfile.ZIP_DEFLATED) as zout:
+        for info, data in entries:
+            zout.writestr(info, patched.get(info.filename, data))
+    _replace_with_retry(tmp.name, str(out_path))
+    return changed
+
+
+def _replace_with_retry(src: str, dst: str, attempts: int = 5) -> None:
+    """os.replace, resilient to transient Windows locks (AV/search indexer briefly
+    holding a just-written file). Falls back to copy+remove if replace keeps failing."""
+    import os
+    import shutil
+    import time
+    for i in range(attempts):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if i == attempts - 1:
+                shutil.copyfile(src, dst)      # last resort: overwrite in place
+                try:
+                    os.remove(src)
+                except OSError:
+                    pass
+                return
+            time.sleep(0.2 * (i + 1))
+
+
+def _diagram_index(part_name: str) -> str:
+    """'ppt/diagrams/data2.xml' -> '2'; 'drawing2.xml' -> '2'. Pairs a data part with
+    its drawing cache so `only_parts={'2'}` touches both."""
+    m = re.search(r"(?:data|drawing)(\d*)\.xml$", part_name)
+    return m.group(1) if m else ""
+
+
+def make_placeholder_image(out_png: str | Path, label: str, w_px: int, h_px: int) -> None:
+    """A neutral labelled placeholder box (for abstracting a project-specific SmartArt/
+    figure to a swappable image slot)."""
+    from PIL import Image, ImageDraw
+    w = max(240, min(int(w_px) or 800, 2400))
+    h = max(140, min(int(h_px) or 450, 2400))
+    img = Image.new("RGB", (w, h), (238, 240, 244))
+    d = ImageDraw.Draw(img)
+    d.rectangle([3, 3, w - 4, h - 4], outline=(150, 160, 175), width=3)
+    msg = f"[ {label} ]"
+    try:
+        d.text((16, max(10, h // 2 - 8)), msg, fill=(90, 100, 115))
+    except Exception:
+        pass
+    img.save(str(out_png), "PNG")
+
+
+def smartart_to_placeholder(prs, target_indices: set, png_for) -> list[dict]:
+    """Replace each SmartArt graphicFrame whose diagram index is in `target_indices`
+    with a placeholder PICTURE of the same geometry, and remove the graphicFrame.
+    `png_for(index, w_px, h_px)` returns a path to a placeholder image for that frame.
+    Returns [{index, media_hint, name}] describing what was swapped, so the caller can
+    register image fields + blank the orphaned diagram text (for the residue check).
+    Operates on a python-pptx Presentation before it is saved."""
+    A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
+    DGM_NS = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
+    R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    EMU_PER_PX = 9525
+    done: list[dict] = []
+    for slide in prs.slides:
+        rels = slide.part.rels
+        for shape in list(slide.shapes):
+            el = shape._element
+            if not el.tag.endswith("}graphicFrame"):
+                continue
+            gd = el.find(f"{{{A_NS}}}graphic/{{{A_NS}}}graphicData")
+            if gd is None or gd.get("uri") != DGM_NS:
+                continue
+            relids = gd.find(f"{{{DGM_NS}}}relIds")
+            if relids is None:
+                continue
+            dm = relids.get(f"{{{R_NS}}}dm")
+            try:
+                data_part = rels[dm].target_partname       # '/ppt/diagrams/data2.xml'
+            except KeyError:
+                continue
+            idx = _diagram_index(str(data_part))
+            if idx not in target_indices:
+                continue
+            L, T, W, H = shape.left, shape.top, shape.width, shape.height
+            png = png_for(idx, (W or 0) // EMU_PER_PX, (H or 0) // EMU_PER_PX)
+            pic = slide.shapes.add_picture(png, L, T, W, H)
+            blip = pic._element.find(f".//{{{A_NS}}}blip")
+            media_part = ""
+            if blip is not None:
+                embed = blip.get(f"{{{R_NS}}}embed")
+                try:
+                    media_part = str(rels[embed].target_partname).lstrip("/")
+                except KeyError:
+                    media_part = ""
+            el.getparent().remove(el)
+            done.append({"index": idx, "media_part": media_part})
+    return done
 
 
 def replace_in_paragraph(paragraph, old: str, new: str) -> int:

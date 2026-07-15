@@ -44,6 +44,7 @@ def docx_report(path: Path, template: Path | None, source_terms):
     doc = Document(str(path))
     texts = [C.para_text(p) for p in C.iter_docx_paragraphs(doc)]
     texts += C.property_texts(path)   # cover-page / data-bound property leaves
+    texts += [d["text"] for d in C.smartart_texts(path)]   # SmartArt diagram text
     errors, checks = [], {}
 
     leftover = sorted({m.group(0) for t in texts for m in C.ANY_TAG_RE.finditer(t)})
@@ -75,6 +76,7 @@ def pptx_report(path: Path, template: Path | None, source_terms):
     prs = Presentation(str(path))
     texts = [C.para_text(p) for p in C.iter_pptx_paragraphs(prs)]
     texts += C.property_texts(path)   # cover-page / data-bound property leaves
+    texts += [d["text"] for d in C.smartart_texts(path)]   # SmartArt diagram text
     errors, checks = [], {}
 
     leftover = sorted({m.group(0) for t in texts for m in C.ANY_TAG_RE.finditer(t)})

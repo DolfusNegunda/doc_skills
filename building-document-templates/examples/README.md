@@ -1,5 +1,9 @@
 # Example: templatize a quarterly review, then fill it for a new client
 
+> For the **family model** (the default: one canonical template per document family,
+> with variable-count row-groups, a data-bound cover and a source-residue check), see
+> [family-README.md](family-README.md). This file is the simpler per-client run.
+
 A full run of the engine on a Word doc. The same four commands work on a `.pptx`.
 Commands are run from the skill root; `$TEMPLATE_REGISTRY` is set so this example
 doesn't touch the shared gallery.
