@@ -36,11 +36,13 @@ description: Turn a client's existing Word (.docx) or PowerPoint (.pptx) file in
    ONE canonical template (extract its content → fill), producing the family's consistent
    style. Only create a new subtype for a genuine *structural* reason, recorded in
    governance — never because two files merely differ in content or minor layout.
-7. **Flag unsupported objects — never fake success.** SmartArt/diagram text and native
-   charts are NOT fillable (python-docx/pptx can't see their text). `propose` and
-   `validate` surface these; when a page depends on them, say what can and cannot be
-   templated and require a rebuild-or-accept decision. Do not report a deck as fully
-   templated when its team-cards/agenda/timeline are SmartArt.
+7. **Handle SmartArt/charts deliberately — never fake success.** `propose`/`validate`
+   surface SmartArt and native charts (python-docx/pptx can't see their text). SmartArt
+   now has real options: (A) fill its text in place if the node count is fixed, (B)
+   abstract the whole diagram to a swappable image, or (C) rebuild a variable-count
+   diagram as a native table (the governance-preferred path). Native charts stay
+   un-fillable. Choose per diagram WITH the user; do not report a deck as fully templated
+   while a team-cards/timeline SmartArt still silently carries the source's content.
 
 ## Scope
 Turn a real example document into a reusable **template + manifest**, register it in
@@ -100,8 +102,10 @@ Point `$TEMPLATE_REGISTRY` at a shared folder to keep the gallery outside the re
 - **Source-residue check (`validate.py`)** — `--source-terms` / manifest `source_terms`
   fails the fill if source-exemplar content (client/project/code/dates/domain terms) survives.
   "No leftover tags" ≠ "successfully reused". Use project-IDENTIFYING terms, not recurring people.
-- **Unsupported-object flagging (`common.iter_unsupported_objects`)** — surfaces SmartArt/chart
-  text that cannot be filled, in `propose` (warning) and `validate` (informational).
+- **SmartArt handling (`common.smartart_texts` / `patch_smartart_parts` / `smartart_to_placeholder`)**
+  — SmartArt text is fillable in place (fixed-count) or the whole diagram is abstractable to
+  an image; `iter_unsupported_objects` flags only diagrams that still carry un-templatized
+  text (and native charts), in `propose` (warning) and `validate` (informational).
 
 Dependencies: `pip install python-docx python-pptx` (already used across the office
 skills). PDF export additionally needs LibreOffice (or Save-As-PDF from the app).
@@ -296,14 +300,27 @@ build, classify every embedded image:
   and `validate` consume. One documented path derives any family's canonical template.
 - **Reuse safety** — the source-residue check catches stale source content that a
   leftover-tag check alone misses.
+- **SmartArt is now addressable two ways** (`.pptx`/`.docx` diagrams). `propose` offers,
+  per diagram: (A) its **text** as candidates — set `keep=variable` to fill the `<a:t>`
+  runs in place (build tags both the data model AND the cached drawing so the render
+  updates); and (B) a **`smartart_image`** candidate — set `keep=variable` to abstract
+  the whole graphic to a swappable optional image slot (works for any diagram; the
+  orphaned diagram text is blanked so residue stays clean). Proven on the kickoff deck:
+  agenda text filled in place, team cards abstracted to a placeholder, residue 0.
+  **A only works when the node COUNT is fixed** across projects (see limitations).
 
 ## Known limitations (state these honestly; don't fake them)
-- **SmartArt / diagram text and native charts are not fillable.** Content inside a
-  SmartArt/diagram (`diagrams/data*.xml`) or chart (`charts/chart*.xml`) is invisible to
-  python-docx/pptx, so the fill keeps the source's text. The engine now **detects and
-  flags** these (`propose` warning, `validate` surface) — do not claim success on a page
-  that depends on them. Workaround: rebuild those slides with normal shapes/tables so they
-  become fillable, or accept them as static and say so.
+- **Variable-count SmartArt cannot be re-flowed; native charts are not fillable.**
+  SmartArt TEXT is now fillable in place (approach A) and a whole diagram can be
+  abstracted to an image (approach B) — see "Now supported". But approach A only changes
+  *text*, not *structure*: you cannot add/remove nodes (a 4-person vs 8-person team card
+  set), because that means rewriting the diagram's point + connection lists and the
+  layout engine can't be re-run here. **For variable-count content (team, deliverables,
+  timelines), rebuild the diagram as a native TABLE** in the canonical template so the
+  row-group engine handles it fully (approach C — a one-time authoring step, and the
+  governance-preferred path). Native **charts** (`charts/chart*.xml`) remain not fillable
+  (data lives in an embedded workbook); `propose`/`validate` still flag any diagram that
+  still carries un-templatized text so the vision pass eyeballs it.
 - **PPTX row-groups not yet supported.** Table-row expansion is `.docx` only; repeating
   rows / team cards / timelines in decks are not auto-cloned (flag them).
 - **Data-bound cover DATE fields can be unreachable.** A cover date rendered from a Word

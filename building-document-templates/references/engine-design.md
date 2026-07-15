@@ -90,10 +90,19 @@ merged header inflates the column list — the review step fixes `columns` by ha
 - **Image slots** — each embedded media part is a swappable slot (`iter_image_slots`);
   mark `variable` to swap per fill (`swap_media_parts` re-encodes to the slot's format,
   geometry preserved). Project-specific figures become labelled placeholders.
-- **Unsupported objects** — `iter_unsupported_objects` finds SmartArt (`diagrams/data*.xml`)
-  and native charts (`charts/chart*.xml`); their text is not a normal run, so the fill
-  can't touch it. `propose` warns, `validate` surfaces them for the vision pass. Flag,
-  never fake.
+- **SmartArt (diagrams)** — text lives in `diagrams/data#.xml` as `<a:t>` runs, mirrored
+  in a cached `drawing#.xml` that LibreOffice/PowerPoint actually render. Two documented
+  paths: **(A) text-fill** — `smartart_texts` surfaces the runs; build tags them and
+  `patch_smartart_parts` rewrites the `<a:t>` in BOTH data + drawing (works only for
+  fixed node counts); **(B) image-abstract** — `smartart_to_placeholder` swaps the whole
+  graphicFrame for a same-geometry placeholder picture (registered as an optional image
+  field) and the orphaned diagram text is blanked. `patch_smartart_parts` operates on raw
+  XML, so it **unescapes → transforms → re-escapes** each `<a:t>` (a value with `&`/`<`/`>`
+  would otherwise produce invalid XML — the one non-obvious footgun). `iter_unsupported_objects`
+  still flags any diagram that *retains* un-templatized text (0-text/imaged diagrams are
+  skipped), so the vision pass eyeballs what's left.
+- **Native charts** (`charts/chart*.xml`) remain not fillable (data lives in an embedded
+  workbook); `propose` warns, `validate` surfaces them. Flag, never fake.
 
 ## The manifest
 `manifest.json` is the contract that lets a future fill happen without re-reading the

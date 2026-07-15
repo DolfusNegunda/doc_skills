@@ -129,6 +129,12 @@ def detect_row_groups(doc) -> list[dict]:
     return cands
 
 
+def _diag_idx(part: str) -> str:
+    """'ppt/diagrams/data2.xml' -> '2' (pairs a diagram with its drawing cache)."""
+    m = re.search(r"(?:data|drawing)(\d*)\.xml$", part or "")
+    return m.group(1) if m else ""
+
+
 def _tag_cell(cell, tag: str) -> None:
     """Replace a cell's content with a single {{ tag }}, preserving the first run's
     formatting (font/size/bold) and REMOVING extra paragraphs — so no empty bullet or
@@ -259,8 +265,56 @@ def propose(args):
             "media_part": slot["media_part"],
         })
 
-    candidates = sorted(by_value.values(), key=lambda c: (-len(c["current_text"])))
-    candidates += image_candidates      # images last; not length-sorted with text
+    # SmartArt (diagram) TEXT candidates — fillable for FIXED-structure diagrams via a
+    # substring replacement in the diagram parts (data+drawing), so they length-sort with
+    # the other text. Default fixed; the review activates the ones that vary per project.
+    smartart_text_candidates = []
+    smartart_by_part: dict[str, list] = {}
+    smartart_seen: set[tuple] = set()
+    for st in C.smartart_texts(path):
+        smartart_by_part.setdefault(st["part"], []).append(st["text"])
+        key = (st["part"], st["text"])
+        if key in smartart_seen or not st["text"].strip():
+            continue
+        smartart_seen.add(key)
+        smartart_text_candidates.append({
+            "current_text": st["text"],
+            "occurrences": 1,
+            "labels": [],
+            "context": f"SmartArt text in {st['part']}",
+            "suggest_name": suggest_name(st["text"].strip(), None, seen_names),
+            "suggest_type": "text",
+            "keep": "fixed",
+            "source": "smartart",
+            "smartart_part": st["part"],
+        })
+    # SmartArt -> IMAGE placeholder candidates: one per diagram. Set keep='variable' to
+    # abstract the WHOLE graphic to a swappable optional image slot (works regardless of
+    # node count; loses the live graphic). Use INSTEAD of the text candidates above for a
+    # variable-count diagram (team/deliverables/timeline).
+    smartart_image_candidates = []
+    for i, (part, texts) in enumerate(sorted(smartart_by_part.items()), 1):
+        nm = f"figure_{i}"
+        while nm in seen_names:
+            nm += "_2"
+        seen_names.add(nm)
+        sample = "; ".join(t.strip() for t in texts[:4] if t.strip())[:80]
+        smartart_image_candidates.append({
+            "current_text": f"[SmartArt {part}: {sample}]",
+            "occurrences": 1,
+            "labels": [],
+            "context": "",
+            "suggest_name": nm,
+            "suggest_type": "image",
+            "keep": "fixed",
+            "source": "smartart_image",
+            "smartart_part": part,
+        })
+
+    candidates = sorted([*by_value.values(), *smartart_text_candidates],
+                        key=lambda c: (-len(c["current_text"])))
+    candidates += image_candidates              # images last; not length-sorted with text
+    candidates += smartart_image_candidates     # SmartArt->image conversions last too
     unsupported = C.iter_unsupported_objects(path)
     # Row-group candidates: variable-count table rows (docx only). The review step marks
     # which tables actually repeat; a repeating table should be a row-group, NOT a set of
@@ -298,9 +352,13 @@ def propose(args):
             print(f"  - table[{rg['table_index']}] {rg['n_rows']} rows, "
                   f"columns {rg['suggest_columns']}")
     if unsupported:
-        print(f"WARNING: {len(unsupported)} unsupported object(s) — SmartArt/chart text is "
-              f"NOT fillable (the fill keeps the source's content). Rebuild these as native "
-              f"shapes/tables, or accept them as static:")
+        n_sa = sum(1 for u in unsupported if u["kind"] == "smartart")
+        print(f"WARNING: {len(unsupported)} unsupported object(s). Charts are not fillable. "
+              f"For the {n_sa} SmartArt diagram(s) you now have options in the candidates: "
+              f"(A) set its TEXT candidates keep='variable' to fill in place — ONLY if its "
+              f"node count is fixed across projects; (B) set its smartart_image candidate "
+              f"keep='variable' to abstract the whole graphic to a swappable image "
+              f"placeholder; or rebuild variable-count diagrams as a native table (row-group):")
         for u in unsupported:
             print(f"  - {u['kind']}: {u['part']} ({u['chars']} chars) e.g. {u['sample']}")
     print("Review/edit it, then run `templatize.py build`.")
@@ -345,6 +403,8 @@ def build(args):
     fields, warnings = [], []
     body_counts: dict[str, int] = {}
     prop_pairs: list[tuple[str, str]] = []
+    smartart_pairs: list[tuple[str, str]] = []      # (current_text, tag) — text-fill (A)
+    sa_image_targets: dict[str, str] = {}           # diagram_index -> field name (B)
     for c in variables:
         name = C.slugify(c.get("suggest_name") or c["current_text"])
         # Image slots are identified by media part, not by tags — no text replacement.
@@ -355,6 +415,19 @@ def build(args):
                          "geometry preserved. Leave unset to keep the original.",
                 required=False, media_part=c.get("media_part", ""),
             ))
+            continue
+        # SmartArt TEXT (A): tag <a:t> in the diagram data+drawing parts, not body runs.
+        if c.get("source") == "smartart":
+            tag = C.placeholder(name)
+            smartart_pairs.append((c["current_text"], tag))
+            fields.append(C.Field(
+                name=name, type="text", example=c["current_text"],
+                guidance="SmartArt text (fixed-structure diagram).", required=True))
+            continue
+        # SmartArt -> IMAGE placeholder (B): the whole diagram becomes an image slot; the
+        # graphicFrame is converted after the paragraph passes (needs the live prs).
+        if c.get("source") == "smartart_image":
+            sa_image_targets[_diag_idx(c.get("smartart_part", ""))] = name
             continue
         tag = C.placeholder(name)
         replaced = 0
@@ -384,20 +457,52 @@ def build(args):
         sys.exit("Provide --family <name> (the family model), or --client and --doc-type.")
     tdir.mkdir(parents=True, exist_ok=True)
     template_file = f"template.{fmt}"
+
+    # B: abstract flagged SmartArt diagrams to placeholder images BEFORE saving (needs the
+    # live prs). Each converted graphicFrame becomes a same-geometry placeholder picture
+    # registered as an OPTIONAL image field, so a fill can swap it or leave the box.
+    if fmt == "pptx" and sa_image_targets:
+        import tempfile as _tf
+        _pngdir = Path(_tf.mkdtemp())
+
+        def _png_for(idx, w, h):
+            p = _pngdir / f"sa_{idx}.png"
+            C.make_placeholder_image(p, sa_image_targets.get(idx, f"figure {idx}"), w, h)
+            return str(p)
+
+        for sw in C.smartart_to_placeholder(doc, set(sa_image_targets), _png_for):
+            idx = sw["index"]
+            fields.append(C.Field(
+                name=sa_image_targets[idx], type="image",
+                example=f"[SmartArt {idx} abstracted to placeholder]",
+                guidance="Optional replacement image; leave unset to keep the placeholder box.",
+                required=False, media_part=sw["media_part"]))
+
     doc.save(str(tdir / template_file))
+
+    # A: fill SmartArt TEXT tags into the diagram data+drawing parts (keeps render + data
+    # model in sync). Blank the text of any imaged (now-orphaned) diagram so the source's
+    # SmartArt content can't survive the residue check.
+    sa_stats: dict[str, int] = {}
+    if smartart_pairs:
+        C.patch_smartart_parts(tdir / template_file, tdir / template_file,
+                               C.ordered_replacer(smartart_pairs, sa_stats))
+    if fmt == "pptx" and sa_image_targets:
+        C.patch_smartart_parts(tdir / template_file, tdir / template_file,
+                               (lambda t: ""), only_parts=set(sa_image_targets))
 
     # Inject tags into cover-page / data-bound property parts too (docProps +
     # customXml). Longest value first; count matches so we can warn only when a
-    # field matched NEITHER the body NOR a property.
+    # field matched NEITHER the body NOR a property NOR a SmartArt part.
     prop_stats: dict[str, int] = {}
     C.patch_property_parts(tdir / template_file, tdir / template_file,
                            C.ordered_replacer(prop_pairs, prop_stats))
     for c in variables:
-        if c.get("source") == "image":
-            continue   # image slots are keyed by media part, not by text tags
+        if c.get("source") in ("image", "smartart_image"):
+            continue   # keyed by media part, not by text tags
         name = C.slugify(c.get("suggest_name") or c["current_text"])
         tag = C.placeholder(name)
-        if body_counts.get(tag, 0) == 0 and prop_stats.get(tag, 0) == 0:
+        if body_counts.get(tag, 0) == 0 and prop_stats.get(tag, 0) == 0 and sa_stats.get(tag, 0) == 0:
             warnings.append(f"'{c['current_text'][:40]}' -> {{{{ {name} }}}}: 0 matches "
                             "(text may span formatting boundaries oddly; check manually)")
 

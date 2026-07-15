@@ -204,6 +204,10 @@ def render(fmt, template_path, data, manifest, out_path):
         prop_pairs.append((C.placeholder(name), "" if val is None else str(val)))
     C.patch_property_parts(out, out, C.ordered_replacer(prop_pairs))
 
+    # SmartArt text tags live in the diagram parts (data + cached drawing), not in body
+    # runs — fill them there too (no-op where the template has no SmartArt tags).
+    C.patch_smartart_parts(out, out, C.ordered_replacer(prop_pairs))
+
     # Swap image/logo slots: {media_part: new_image_path} from image-type fields whose
     # data value is a path. Unset image slots keep the original picture.
     image_map = {f["media_part"]: data[f["name"]]
