@@ -66,7 +66,10 @@ def slide_texts(slide):
 
 
 def check_geometry(slide, idx, sw, sh, warnings):
-    """Warn on shapes whose box falls outside the slide (clipped / off-canvas)."""
+    """Warn on shapes whose box falls outside the slide (clipped / off-canvas).
+    Top-level shapes only — a child that bleeds off-slide inside a group is not
+    recursed into, and text that autofit-shrinks or overflows its (in-bounds) box
+    is invisible here; both are the vision pass's job."""
     for shape in slide.shapes:
         l, t, w, h = shape.left, shape.top, shape.width, shape.height
         if None in (l, t, w, h):
