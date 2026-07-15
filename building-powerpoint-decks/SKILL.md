@@ -17,10 +17,20 @@ Produce a deck that is visually consistent, readable from the back of a room, an
 built on masters so it can be restyled or extended without manual cleanup.
 
 ## Step 0 — Fill a built-in template before you build (decision gate)
-The suite ships branded, fill-ready deck templates in the document-template registry —
-`exec_update` (QBR/quarterly review), `project_kickoff`, `proposal`, `report_out`. If the
-requested deck matches one, **do not author slides at all**; run the deterministic fill
-path (safe for any model, however small):
+The suite ships fill-ready deck templates in the document-template registry, in two
+visual families:
+
+- **Generated** (`exec_update`, `project_kickoff`, `proposal`, `report_out`) — clean,
+  brand-pack-driven decks built by `build_template_library.py`.
+- **Designer** (`exec_update_visual`, `project_kickoff_visual`, `proposal_visual`,
+  `report_out_visual`, `project_status_visual`) — curated from the professional
+  infographic layout gallery (`assets/layout-gallery.pptx`): agency-quality covers,
+  agenda chevrons, challenge/roadmap/pros-cons diagrams. Every text slot is a field;
+  the neutral CLIENT-LOGO chips are **image slots** (`client_logo*` fields) swapped in
+  one fill. Prefer these when the audience expects polished visual slides.
+
+If the requested deck matches either family, **do not author slides at all**; run the
+deterministic fill path (safe for any model, however small):
 
 ```bash
 cd ../building-document-templates
@@ -38,6 +48,17 @@ The library is generated per brand pack by
 [../brands/README.md](../brands/README.md)); externally sourced templates join it via
 [../building-document-templates/references/external-intake.md](../building-document-templates/references/external-intake.md).
 Continue below **only** when no template fits (bespoke structure, unusual format).
+
+## The layout gallery (bespoke visual decks)
+[assets/layout-gallery.pptx](assets/layout-gallery.pptx) is a de-branded, 147-slide
+professional layout library — one showcase slide per layout (covers, agendas, processes,
+roadmaps, funnels, pyramids, comparisons, maps…), content in empty placeholders, neutral
+CLIENT-LOGO chips where an org logo goes. For a bespoke deck: **copy it, delete the
+slides you don't need, and type into the placeholders** — never rebuild the diagrams.
+Avoid slides whose art encodes quantities (fixed donut/bar percentages) unless your
+numbers match the art. New fill-ready templates are curated from it with
+[scripts/derive_gallery_templates.py](scripts/derive_gallery_templates.py) (see its
+header; the same script re-derives everything from a client's own gallery deck).
 
 ## Core principle: adapt the starter deck, don't reinvent it
 [assets/starter-template.pptx](assets/starter-template.pptx) is a complete, styled,

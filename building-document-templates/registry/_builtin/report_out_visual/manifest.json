@@ -1,0 +1,262 @@
+{
+  "template_id": "_builtin/report_out_visual",
+  "client": "_builtin",
+  "doc_type": "report_out_visual",
+  "format": "pptx",
+  "template_file": "template.pptx",
+  "source_file": "curated from assets/layout-gallery.pptx by derive_gallery_templates.py",
+  "version": "1.0.0",
+  "owner": "",
+  "created": "2026-07-15",
+  "changelog": [
+    "2026-07-15: curated from the de-branded layout gallery"
+  ],
+  "description": "Results report-out on the designer layout system: cover, summary, findings, before/after comparison, recommendations.",
+  "fields": [
+    {
+      "name": "cover_title",
+      "type": "text",
+      "example": "Haulage Study — Results",
+      "guidance": "Headline for the cover slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "cover_text1",
+      "type": "text",
+      "example": "What we found, what it means, what to do next.",
+      "guidance": "cover slot 1 of 2, top-to-bottom left-to-right (≈63 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "cover_text2",
+      "type": "text",
+      "example": "What we found, what it means, what to do next.",
+      "guidance": "cover slot 2 of 2, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "summary_title",
+      "type": "text",
+      "example": "Executive summary",
+      "guidance": "Headline for the executive summary slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "summary_text1",
+      "type": "text",
+      "example": "The phased transition cuts cost per tonne 14% with payback inside 30 months.",
+      "guidance": "executive summary slot 1 of 5, top-to-bottom left-to-right (≈93 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "summary_text2",
+      "type": "text",
+      "example": "The phased transition cuts cost per tonne 14% with payback inside 30 months.",
+      "guidance": "executive summary slot 2 of 5, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "summary_text3",
+      "type": "text",
+      "example": "The phased transition cuts cost per tonne 14% with payback inside 30 months.",
+      "guidance": "executive summary slot 3 of 5, top-to-bottom left-to-right (≈360 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "summary_text4",
+      "type": "text",
+      "example": "The phased transition cuts cost per tonne 14% with payback inside 30 months.",
+      "guidance": "executive summary slot 4 of 5, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "summary_text5",
+      "type": "text",
+      "example": "The phased transition cuts cost per tonne 14% with payback inside 30 months.",
+      "guidance": "executive summary slot 5 of 5, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "finding_title",
+      "type": "text",
+      "example": "Key findings",
+      "guidance": "Headline for the findings slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "finding_text1",
+      "type": "text",
+      "example": "Cost per tonne falls 14% in the phased scenario",
+      "guidance": "findings slot 1 of 5, top-to-bottom left-to-right (≈74 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "finding_text2",
+      "type": "text",
+      "example": "Cost per tonne falls 14% in the phased scenario",
+      "guidance": "findings slot 2 of 5, top-to-bottom left-to-right (≈74 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "finding_text3",
+      "type": "text",
+      "example": "Cost per tonne falls 14% in the phased scenario",
+      "guidance": "findings slot 3 of 5, top-to-bottom left-to-right (≈74 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "finding_text4",
+      "type": "text",
+      "example": "Cost per tonne falls 14% in the phased scenario",
+      "guidance": "findings slot 4 of 5, top-to-bottom left-to-right (≈74 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "finding_text5",
+      "type": "text",
+      "example": "Cost per tonne falls 14% in the phased scenario",
+      "guidance": "findings slot 5 of 5, top-to-bottom left-to-right (≈74 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "compare_title",
+      "type": "text",
+      "example": "Today vs the proposed model",
+      "guidance": "Headline for the before/after comparison slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "compare_note",
+      "type": "text",
+      "example": "One muted line under the heading.",
+      "guidance": "Short framing line for the slide.",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "before_1",
+      "type": "text",
+      "example": "Current state (before 1)",
+      "guidance": "Before entry 1 (≈39 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "before_2",
+      "type": "text",
+      "example": "Current state (before 2)",
+      "guidance": "Before entry 2 (≈405 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "after_1",
+      "type": "text",
+      "example": "Current state (after 1)",
+      "guidance": "After entry 1 (≈39 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "after_2",
+      "type": "text",
+      "example": "Current state (after 2)",
+      "guidance": "After entry 2 (≈405 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "recommendation_title",
+      "type": "text",
+      "example": "Recommendations",
+      "guidance": "Headline for the recommendations slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "recommendation_text1",
+      "type": "text",
+      "example": "Commit to the phased transition from Q2",
+      "guidance": "recommendations slot 1 of 5, top-to-bottom left-to-right (≈93 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "recommendation_text2",
+      "type": "text",
+      "example": "Commit to the phased transition from Q2",
+      "guidance": "recommendations slot 2 of 5, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "recommendation_text3",
+      "type": "text",
+      "example": "Commit to the phased transition from Q2",
+      "guidance": "recommendations slot 3 of 5, top-to-bottom left-to-right (≈360 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "recommendation_text4",
+      "type": "text",
+      "example": "Commit to the phased transition from Q2",
+      "guidance": "recommendations slot 4 of 5, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "recommendation_text5",
+      "type": "text",
+      "example": "Commit to the phased transition from Q2",
+      "guidance": "recommendations slot 5 of 5, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "client_logo",
+      "type": "image",
+      "example": "",
+      "guidance": "Footer/master logo: PNG path for the client's logo — swapped everywhere this slot appears. Leave unset to keep the neutral CLIENT LOGO chip.",
+      "required": false,
+      "media_part": "ppt/media/image1.png"
+    },
+    {
+      "name": "client_logo_cover",
+      "type": "image",
+      "example": "",
+      "guidance": "Cover logo lockup: PNG path for the client's logo — swapped everywhere this slot appears. Leave unset to keep the neutral CLIENT LOGO chip.",
+      "required": false,
+      "media_part": "ppt/media/image3.png"
+    },
+    {
+      "name": "client_logo_light",
+      "type": "image",
+      "example": "",
+      "guidance": "Logo on light backgrounds: PNG path for the client's logo — swapped everywhere this slot appears. Leave unset to keep the neutral CLIENT LOGO chip.",
+      "required": false,
+      "media_part": "ppt/media/image15.png"
+    }
+  ],
+  "row_groups": [],
+  "source_terms": [
+    "Acme Mining",
+    "Jane Mokoena"
+  ]
+}

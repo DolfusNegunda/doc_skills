@@ -1,0 +1,510 @@
+{
+  "template_id": "_builtin/proposal_visual",
+  "client": "_builtin",
+  "doc_type": "proposal_visual",
+  "format": "pptx",
+  "template_file": "template.pptx",
+  "source_file": "curated from assets/layout-gallery.pptx by derive_gallery_templates.py",
+  "version": "1.0.0",
+  "owner": "",
+  "created": "2026-07-15",
+  "changelog": [
+    "2026-07-15: curated from the de-branded layout gallery"
+  ],
+  "description": "Client proposal on the designer layout system: cover, context, challenges, approach, scope, team, investment.",
+  "fields": [
+    {
+      "name": "cover_title",
+      "type": "text",
+      "example": "Fleet Optimisation Study",
+      "guidance": "Headline for the cover slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "cover_text1",
+      "type": "text",
+      "example": "Proposal prepared for Acme Mining.",
+      "guidance": "cover slot 1 of 2, top-to-bottom left-to-right (≈61 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "cover_text2",
+      "type": "text",
+      "example": "Proposal prepared for Acme Mining.",
+      "guidance": "cover slot 2 of 2, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "context_title",
+      "type": "text",
+      "example": "Context and challenge",
+      "guidance": "Headline for the context slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "context_text1",
+      "type": "text",
+      "example": "Haulage costs rose 18% while utilisation fell — the operating model is the constraint.",
+      "guidance": "context slot 1 of 8, top-to-bottom left-to-right (≈76 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "context_text2",
+      "type": "text",
+      "example": "Haulage costs rose 18% while utilisation fell — the operating model is the constraint.",
+      "guidance": "context slot 2 of 8, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "context_text3",
+      "type": "text",
+      "example": "Haulage costs rose 18% while utilisation fell — the operating model is the constraint.",
+      "guidance": "context slot 3 of 8, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "context_text4",
+      "type": "text",
+      "example": "Haulage costs rose 18% while utilisation fell — the operating model is the constraint.",
+      "guidance": "context slot 4 of 8, top-to-bottom left-to-right (≈344 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "context_text5",
+      "type": "text",
+      "example": "Haulage costs rose 18% while utilisation fell — the operating model is the constraint.",
+      "guidance": "context slot 5 of 8, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "context_text6",
+      "type": "text",
+      "example": "Haulage costs rose 18% while utilisation fell — the operating model is the constraint.",
+      "guidance": "context slot 6 of 8, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "context_text7",
+      "type": "text",
+      "example": "Haulage costs rose 18% while utilisation fell — the operating model is the constraint.",
+      "guidance": "context slot 7 of 8, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "context_text8",
+      "type": "text",
+      "example": "Haulage costs rose 18% while utilisation fell — the operating model is the constraint.",
+      "guidance": "context slot 8 of 8, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "pain_title",
+      "type": "text",
+      "example": "What is holding performance back",
+      "guidance": "Headline for the pain points slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "pain_text1",
+      "type": "text",
+      "example": "Cycle times vary 2.3x between shifts",
+      "guidance": "pain points slot 1 of 4, top-to-bottom left-to-right (≈76 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "pain_text2",
+      "type": "text",
+      "example": "Cycle times vary 2.3x between shifts",
+      "guidance": "pain points slot 2 of 4, top-to-bottom left-to-right (≈76 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "pain_text3",
+      "type": "text",
+      "example": "Cycle times vary 2.3x between shifts",
+      "guidance": "pain points slot 3 of 4, top-to-bottom left-to-right (≈76 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "pain_text4",
+      "type": "text",
+      "example": "Cycle times vary 2.3x between shifts",
+      "guidance": "pain points slot 4 of 4, top-to-bottom left-to-right (≈76 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "approach_title",
+      "type": "text",
+      "example": "Our approach",
+      "guidance": "Headline for the approach slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "approach_text1",
+      "type": "text",
+      "example": "Phase 1: baseline the operation",
+      "guidance": "approach slot 1 of 11, top-to-bottom left-to-right (≈76 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "approach_text2",
+      "type": "text",
+      "example": "Phase 1: baseline the operation",
+      "guidance": "approach slot 2 of 11, top-to-bottom left-to-right (≈75 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "approach_text3",
+      "type": "text",
+      "example": "Phase 1: baseline the operation",
+      "guidance": "approach slot 3 of 11, top-to-bottom left-to-right (≈75 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "approach_text4",
+      "type": "text",
+      "example": "Phase 1: baseline the operation",
+      "guidance": "approach slot 4 of 11, top-to-bottom left-to-right (≈75 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "approach_text5",
+      "type": "text",
+      "example": "Phase 1: baseline the operation",
+      "guidance": "approach slot 5 of 11, top-to-bottom left-to-right (≈75 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "approach_text6",
+      "type": "text",
+      "example": "Phase 1: baseline the operation",
+      "guidance": "approach slot 6 of 11, top-to-bottom left-to-right (≈75 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "approach_text7",
+      "type": "text",
+      "example": "Phase 1: baseline the operation",
+      "guidance": "approach slot 7 of 11, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "approach_text8",
+      "type": "text",
+      "example": "Phase 1: baseline the operation",
+      "guidance": "approach slot 8 of 11, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "approach_text9",
+      "type": "text",
+      "example": "Phase 1: baseline the operation",
+      "guidance": "approach slot 9 of 11, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "approach_text10",
+      "type": "text",
+      "example": "Phase 1: baseline the operation",
+      "guidance": "approach slot 10 of 11, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "approach_text11",
+      "type": "text",
+      "example": "Phase 1: baseline the operation",
+      "guidance": "approach slot 11 of 11, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "scope_title",
+      "type": "text",
+      "example": "Scope and deliverables",
+      "guidance": "Headline for the scope slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "scope_text1",
+      "type": "text",
+      "example": "Validated simulation model",
+      "guidance": "scope slot 1 of 5, top-to-bottom left-to-right (≈70 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "scope_text2",
+      "type": "text",
+      "example": "Validated simulation model",
+      "guidance": "scope slot 2 of 5, top-to-bottom left-to-right (≈70 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "scope_text3",
+      "type": "text",
+      "example": "Validated simulation model",
+      "guidance": "scope slot 3 of 5, top-to-bottom left-to-right (≈70 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "scope_text4",
+      "type": "text",
+      "example": "Validated simulation model",
+      "guidance": "scope slot 4 of 5, top-to-bottom left-to-right (≈70 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "scope_text5",
+      "type": "text",
+      "example": "Validated simulation model",
+      "guidance": "scope slot 5 of 5, top-to-bottom left-to-right (≈70 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_title",
+      "type": "text",
+      "example": "The team",
+      "guidance": "Headline for the team slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "team_text1",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 1 of 13, top-to-bottom left-to-right (≈76 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text2",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 2 of 13, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text3",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 3 of 13, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text4",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 4 of 13, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text5",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 5 of 13, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text6",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 6 of 13, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text7",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 7 of 13, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text8",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 8 of 13, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text9",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 9 of 13, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text10",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 10 of 13, top-to-bottom left-to-right (≈80 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text11",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 11 of 13, top-to-bottom left-to-right (≈80 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text12",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 12 of 13, top-to-bottom left-to-right (≈80 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text13",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 13 of 13, top-to-bottom left-to-right (≈80 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "investment_title",
+      "type": "text",
+      "example": "Timeline and investment",
+      "guidance": "Headline for the investment slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "investment_text1",
+      "type": "text",
+      "example": "Eight weeks, three consultants, fixed fee.",
+      "guidance": "investment slot 1 of 8, top-to-bottom left-to-right (≈76 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "investment_text2",
+      "type": "text",
+      "example": "Eight weeks, three consultants, fixed fee.",
+      "guidance": "investment slot 2 of 8, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "investment_text3",
+      "type": "text",
+      "example": "Eight weeks, three consultants, fixed fee.",
+      "guidance": "investment slot 3 of 8, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "investment_text4",
+      "type": "text",
+      "example": "Eight weeks, three consultants, fixed fee.",
+      "guidance": "investment slot 4 of 8, top-to-bottom left-to-right (≈344 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "investment_text5",
+      "type": "text",
+      "example": "Eight weeks, three consultants, fixed fee.",
+      "guidance": "investment slot 5 of 8, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "investment_text6",
+      "type": "text",
+      "example": "Eight weeks, three consultants, fixed fee.",
+      "guidance": "investment slot 6 of 8, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "investment_text7",
+      "type": "text",
+      "example": "Eight weeks, three consultants, fixed fee.",
+      "guidance": "investment slot 7 of 8, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "investment_text8",
+      "type": "text",
+      "example": "Eight weeks, three consultants, fixed fee.",
+      "guidance": "investment slot 8 of 8, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "client_logo",
+      "type": "image",
+      "example": "",
+      "guidance": "Footer/master logo: PNG path for the client's logo — swapped everywhere this slot appears. Leave unset to keep the neutral CLIENT LOGO chip.",
+      "required": false,
+      "media_part": "ppt/media/image1.png"
+    },
+    {
+      "name": "client_logo_cover",
+      "type": "image",
+      "example": "",
+      "guidance": "Cover logo lockup: PNG path for the client's logo — swapped everywhere this slot appears. Leave unset to keep the neutral CLIENT LOGO chip.",
+      "required": false,
+      "media_part": "ppt/media/image3.png"
+    },
+    {
+      "name": "client_logo_light",
+      "type": "image",
+      "example": "",
+      "guidance": "Logo on light backgrounds: PNG path for the client's logo — swapped everywhere this slot appears. Leave unset to keep the neutral CLIENT LOGO chip.",
+      "required": false,
+      "media_part": "ppt/media/image15.png"
+    }
+  ],
+  "row_groups": [],
+  "source_terms": [
+    "Acme Mining",
+    "Jane Mokoena"
+  ]
+}

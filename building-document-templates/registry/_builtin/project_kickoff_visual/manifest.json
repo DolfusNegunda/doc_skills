@@ -1,0 +1,494 @@
+{
+  "template_id": "_builtin/project_kickoff_visual",
+  "client": "_builtin",
+  "doc_type": "project_kickoff_visual",
+  "format": "pptx",
+  "template_file": "template.pptx",
+  "source_file": "curated from assets/layout-gallery.pptx by derive_gallery_templates.py",
+  "version": "1.0.0",
+  "owner": "",
+  "created": "2026-07-15",
+  "changelog": [
+    "2026-07-15: curated from the de-branded layout gallery"
+  ],
+  "description": "Project kickoff on the designer layout system: cover, agenda, objectives, team, journey, timeline, next steps.",
+  "fields": [
+    {
+      "name": "cover_title",
+      "type": "text",
+      "example": "Project Falcon — Kickoff",
+      "guidance": "Headline for the cover slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "cover_text1",
+      "type": "text",
+      "example": "Simulating the fleet transition across three sites.",
+      "guidance": "cover slot 1 of 2, top-to-bottom left-to-right (≈62 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "cover_text2",
+      "type": "text",
+      "example": "Simulating the fleet transition across three sites.",
+      "guidance": "cover slot 2 of 2, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "agenda_title",
+      "type": "text",
+      "example": "Agenda",
+      "guidance": "Headline for the agenda slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "agenda_text1",
+      "type": "text",
+      "example": "Project introduction and objectives",
+      "guidance": "agenda slot 1 of 7, top-to-bottom left-to-right (≈68 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "agenda_text2",
+      "type": "text",
+      "example": "Project introduction and objectives",
+      "guidance": "agenda slot 2 of 7, top-to-bottom left-to-right (≈68 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "agenda_text3",
+      "type": "text",
+      "example": "Project introduction and objectives",
+      "guidance": "agenda slot 3 of 7, top-to-bottom left-to-right (≈68 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "agenda_text4",
+      "type": "text",
+      "example": "Project introduction and objectives",
+      "guidance": "agenda slot 4 of 7, top-to-bottom left-to-right (≈64 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "agenda_text5",
+      "type": "text",
+      "example": "Project introduction and objectives",
+      "guidance": "agenda slot 5 of 7, top-to-bottom left-to-right (≈68 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "agenda_text6",
+      "type": "text",
+      "example": "Project introduction and objectives",
+      "guidance": "agenda slot 6 of 7, top-to-bottom left-to-right (≈68 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "agenda_text7",
+      "type": "text",
+      "example": "Project introduction and objectives",
+      "guidance": "agenda slot 7 of 7, top-to-bottom left-to-right (≈68 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "objective_title",
+      "type": "text",
+      "example": "Definition of victory",
+      "guidance": "Headline for the objectives slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "objective_text1",
+      "type": "text",
+      "example": "A validated model of current operations",
+      "guidance": "objectives slot 1 of 6, top-to-bottom left-to-right (≈35 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "objective_text2",
+      "type": "text",
+      "example": "A validated model of current operations",
+      "guidance": "objectives slot 2 of 6, top-to-bottom left-to-right (≈35 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "objective_text3",
+      "type": "text",
+      "example": "A validated model of current operations",
+      "guidance": "objectives slot 3 of 6, top-to-bottom left-to-right (≈96 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "objective_text4",
+      "type": "text",
+      "example": "A validated model of current operations",
+      "guidance": "objectives slot 4 of 6, top-to-bottom left-to-right (≈35 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "objective_text5",
+      "type": "text",
+      "example": "A validated model of current operations",
+      "guidance": "objectives slot 5 of 6, top-to-bottom left-to-right (≈35 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "objective_text6",
+      "type": "text",
+      "example": "A validated model of current operations",
+      "guidance": "objectives slot 6 of 6, top-to-bottom left-to-right (≈35 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_title",
+      "type": "text",
+      "example": "Meet the team",
+      "guidance": "Headline for the team slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "team_text1",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 1 of 16, top-to-bottom left-to-right (≈76 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text2",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 2 of 16, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text3",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 3 of 16, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text4",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 4 of 16, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text5",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 5 of 16, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text6",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 6 of 16, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text7",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 7 of 16, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text8",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 8 of 16, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text9",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 9 of 16, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text10",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 10 of 16, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text11",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 11 of 16, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text12",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 12 of 16, top-to-bottom left-to-right (≈80 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text13",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 13 of 16, top-to-bottom left-to-right (≈80 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text14",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 14 of 16, top-to-bottom left-to-right (≈80 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text15",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 15 of 16, top-to-bottom left-to-right (≈80 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "team_text16",
+      "type": "text",
+      "example": "Jane Mokoena — Engagement Lead",
+      "guidance": "team slot 16 of 16, top-to-bottom left-to-right (≈80 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "phase_title",
+      "type": "text",
+      "example": "How we get there",
+      "guidance": "Headline for the journey slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "phase_text1",
+      "type": "text",
+      "example": "Phase 1: data audit",
+      "guidance": "journey slot 1 of 9, top-to-bottom left-to-right (≈76 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "phase_text2",
+      "type": "text",
+      "example": "Phase 1: data audit",
+      "guidance": "journey slot 2 of 9, top-to-bottom left-to-right (≈56 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "phase_text3",
+      "type": "text",
+      "example": "Phase 1: data audit",
+      "guidance": "journey slot 3 of 9, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "phase_text4",
+      "type": "text",
+      "example": "Phase 1: data audit",
+      "guidance": "journey slot 4 of 9, top-to-bottom left-to-right (≈56 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "phase_text5",
+      "type": "text",
+      "example": "Phase 1: data audit",
+      "guidance": "journey slot 5 of 9, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "phase_text6",
+      "type": "text",
+      "example": "Phase 1: data audit",
+      "guidance": "journey slot 6 of 9, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "phase_text7",
+      "type": "text",
+      "example": "Phase 1: data audit",
+      "guidance": "journey slot 7 of 9, top-to-bottom left-to-right (≈56 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "phase_text8",
+      "type": "text",
+      "example": "Phase 1: data audit",
+      "guidance": "journey slot 8 of 9, top-to-bottom left-to-right (≈20 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "phase_text9",
+      "type": "text",
+      "example": "Phase 1: data audit",
+      "guidance": "journey slot 9 of 9, top-to-bottom left-to-right (≈56 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "timeline_title",
+      "type": "text",
+      "example": "Timeline",
+      "guidance": "Headline for the timeline slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "timeline_text1",
+      "type": "text",
+      "example": "Sprint 1 — Weeks 1–2",
+      "guidance": "timeline slot 1 of 4, top-to-bottom left-to-right (≈76 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "timeline_text2",
+      "type": "text",
+      "example": "Sprint 1 — Weeks 1–2",
+      "guidance": "timeline slot 2 of 4, top-to-bottom left-to-right (≈96 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "timeline_text3",
+      "type": "text",
+      "example": "Sprint 1 — Weeks 1–2",
+      "guidance": "timeline slot 3 of 4, top-to-bottom left-to-right (≈96 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "timeline_text4",
+      "type": "text",
+      "example": "Sprint 1 — Weeks 1–2",
+      "guidance": "timeline slot 4 of 4, top-to-bottom left-to-right (≈96 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "next_title",
+      "type": "text",
+      "example": "Next steps",
+      "guidance": "Headline for the next steps slide — state the takeaway.",
+      "required": true,
+      "media_part": ""
+    },
+    {
+      "name": "next_text1",
+      "type": "text",
+      "example": "Data extract of 12 months' records — by Friday",
+      "guidance": "next steps slot 1 of 5, top-to-bottom left-to-right (≈93 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "next_text2",
+      "type": "text",
+      "example": "Data extract of 12 months' records — by Friday",
+      "guidance": "next steps slot 2 of 5, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "next_text3",
+      "type": "text",
+      "example": "Data extract of 12 months' records — by Friday",
+      "guidance": "next steps slot 3 of 5, top-to-bottom left-to-right (≈360 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "next_text4",
+      "type": "text",
+      "example": "Data extract of 12 months' records — by Friday",
+      "guidance": "next steps slot 4 of 5, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "next_text5",
+      "type": "text",
+      "example": "Data extract of 12 months' records — by Friday",
+      "guidance": "next steps slot 5 of 5, top-to-bottom left-to-right (≈86 chars fit).",
+      "required": false,
+      "media_part": ""
+    },
+    {
+      "name": "client_logo",
+      "type": "image",
+      "example": "",
+      "guidance": "Footer/master logo: PNG path for the client's logo — swapped everywhere this slot appears. Leave unset to keep the neutral CLIENT LOGO chip.",
+      "required": false,
+      "media_part": "ppt/media/image1.png"
+    },
+    {
+      "name": "client_logo_cover",
+      "type": "image",
+      "example": "",
+      "guidance": "Cover logo lockup: PNG path for the client's logo — swapped everywhere this slot appears. Leave unset to keep the neutral CLIENT LOGO chip.",
+      "required": false,
+      "media_part": "ppt/media/image3.png"
+    },
+    {
+      "name": "client_logo_light",
+      "type": "image",
+      "example": "",
+      "guidance": "Logo on light backgrounds: PNG path for the client's logo — swapped everywhere this slot appears. Leave unset to keep the neutral CLIENT LOGO chip.",
+      "required": false,
+      "media_part": "ppt/media/image15.png"
+    }
+  ],
+  "row_groups": [],
+  "source_terms": [
+    "Acme Mining",
+    "Jane Mokoena"
+  ]
+}

@@ -327,6 +327,23 @@ def main():
         dman = reg / "_builtin" / "memo" / "manifest.json"
         check("docx library builder registers memo", rc == 0 and dman.exists())
 
+        # gallery-derived visual template (committed in the repo registry): the
+        # scaffold -> fill -> validate loop must work on it as-is.
+        repo_reg = ROOT / "building-document-templates" / "registry"
+        vis_man = repo_reg / "_builtin" / "exec_update_visual" / "manifest.json"
+        if vis_man.exists():
+            rc, _ = run(f"{tdir}/registry.py", "scaffold", "--builtin", "exec_update_visual",
+                        "--out", tmp / "vis_content.json", "--with-examples")
+            out_vis = tmp / "vis_filled.pptx"
+            rc2, _ = run(f"{tdir}/fill.py", "--client", "_builtin",
+                         "--doc-type", "exec_update_visual",
+                         "--data", tmp / "vis_content.json", "--out", out_vis)
+            rc3, d = run(f"{tdir}/validate.py", out_vis, "--template",
+                         repo_reg / "_builtin" / "exec_update_visual" / "template.pptx",
+                         "--manifest", vis_man)
+            check("gallery-derived visual template scaffolds, fills, validates",
+                  rc == 0 and rc2 == 0 and rc3 == 0 and d and d["status"] == "OK")
+
         rc, _ = run(f"{tdir}/registry.py", "scaffold", "--builtin", "memo",
                     "--out", tmp / "memo_content.json", "--with-examples", env=env)
         check("registry scaffold emits a content file", rc == 0
