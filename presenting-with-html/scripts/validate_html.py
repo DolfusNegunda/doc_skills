@@ -1,10 +1,22 @@
-"""Gate an HTML executive report before it ships.
+"""Gate an HTML report before it ships — deck OR long-form.
 
-Structural check (no browser needed) that the report follows the premium slide-deck
-pattern: slide deck markup, working navigation, a persisted light/dark toggle with
-BOTH theme token sets, Plotly present when charts are used, and no leftover
-placeholders. Deterministic and cheap — pair it with an actual browser open (and a
-headless screenshot for a vision pass) before delivery.
+Structural check (no browser needed) that the report follows the premium
+presenting-with-html pattern. The skill ships two formats:
+
+  * deck   — full-screen slides, arrow/keyboard/dot navigation (the boardroom deck)
+  * report — a long-form scrolling document with a table of contents and print styles
+
+The format is read from `data-format="deck|report"` on the <html> element and
+defaults to "deck" when the marker is absent (so older decks still validate).
+
+Some checks are FORMAT-AGNOSTIC and enforced in both modes — both theme token
+sets, a persisted toggle, Plotly present when charts are used, theme-aware chart
+re-render, and no leftover placeholders. The rest are mode-specific: a deck must
+have slide/nav structure; a report must have sections, an in-page TOC/anchors,
+and print styles.
+
+Deterministic and cheap — pair it with an actual browser open (and a headless
+screenshot for a vision pass) before delivery.
 
 Usage:
     python scripts/validate_html.py report.html
@@ -20,9 +32,15 @@ import sys
 from pathlib import Path
 
 PLACEHOLDERS = re.compile(r"\{\{.*?\}\}|lorem\s+ipsum|\bTODO\b|\bTBD\b|\bFIXME\b", re.I)
+CDN_PLOTLY = re.compile(r'src\s*=\s*["\']https?://[^"\']*plot(?:ly|\.ly)[^"\']*["\']', re.I)
 
 
-def check_html(html: str) -> tuple[list[str], list[str], dict]:
+def detect_format(html: str) -> str:
+    m = re.search(r'data-format\s*=\s*["\']?(deck|report)', html, re.I)
+    return m.group(1).lower() if m else "deck"
+
+
+def check_html(raw: str) -> tuple[list[str], list[str], dict]:
     errors: list[str] = []
     warnings: list[str] = []
     checks: dict = {}
@@ -37,9 +55,58 @@ def check_html(html: str) -> tuple[list[str], list[str], dict]:
         if not cond:
             warnings.append(msg)
 
+    # Strip HTML comments for STRUCTURAL checks so how-to-use guidance
+    # (e.g. `<section class="report-section" id="...">` in a comment) isn't
+    # miscounted as real markup. The placeholder scan still runs on `raw`.
+    html = re.sub(r"<!--.*?-->", "", raw, flags=re.S)
+
+    fmt = detect_format(html)
+    checks["format"] = fmt
+
+    # ================= FORMAT-AGNOSTIC INVARIANTS (both modes) =================
+    # ---- Theme (both token sets + persistence) ----
+    need("theme_toggle", re.search(r'class="[^"]*\btheme-toggle\b|id="themeToggle"', html) is not None,
+         "No visible light/dark theme toggle.")
+    has_dark = re.search(r'data-theme=.?dark|:root\s*\{', html) is not None
+    has_light = re.search(r'data-theme=.?light', html) is not None
+    need("theme_both", has_dark and has_light,
+         "Theme tokens must exist for BOTH dark and light (found dark=%s light=%s)." % (has_dark, has_light))
+    want("theme_persist", "localStorage" in html,
+         "Theme choice is not persisted (no localStorage) — it will reset on reload.")
+
+    # ---- Charts ----
+    uses_charts = re.search(r'\bchart\b|Plotly|data-chart', html) is not None
+    checks["uses_charts"] = uses_charts
+    if uses_charts:
+        need("plotly", "Plotly" in html or "plotly" in html,
+             "Charts referenced but Plotly is not included (inline lib, local file, or CDN <script>).")
+        want("plotly_theme", re.search(r"relayout|Plotly\.react|themeColors|build\(", html) is not None,
+             "Charts may not restyle when the theme changes — re-render/relayout on toggle.")
+        # Self-contained delivery: an external CDN dep is a warning, not a failure.
+        # Fold it in with:  python scripts/vendor_plotly.py --inline <file>
+        want("plotly_selfcontained", CDN_PLOTLY.search(html) is None,
+             "Plotly loads from an external CDN — not self-contained/CSP-safe. Before delivery run "
+             "`python scripts/vendor_plotly.py --inline <file>` to inline the library.")
+
+    # ---- Content hygiene (scan raw text incl. comments) ----
+    leftovers = sorted(set(m.group(0) for m in PLACEHOLDERS.finditer(raw)))
+    checks["placeholders"] = leftovers
+    if leftovers:
+        errors.append(f"Leftover placeholder/boilerplate text: {leftovers}")
+
+    # ================= MODE-SPECIFIC CHECKS =================
+    if fmt == "deck":
+        _check_deck(html, need, want, checks)
+    else:
+        _check_report(html, need, want, checks)
+
+    return errors, warnings, checks
+
+
+def _check_deck(html, need, want, checks):
     # ---- Slide deck structure ----
     need("deck", 'class="deck"' in html or "class='deck'" in html,
-         "No .deck container — the report must be a slide deck, not a scrolling page.")
+         "No .deck container — deck format must be a slide deck, not a scrolling page.")
     n_slides = len(re.findall(r'class="[^"]*\bslide\b', html))
     checks["n_slides"] = n_slides
     need("slides", n_slides >= 2, f"Found {n_slides} .slide sections; need at least 2.")
@@ -64,32 +131,31 @@ def check_html(html: str) -> tuple[list[str], list[str], dict]:
     want("scroll_reset", "scrollTop" in html,
          "No scroll reset on slide change — long slides keep their scroll position.")
 
-    # ---- Theme (both token sets + persistence) ----
-    need("theme_toggle", re.search(r'class="[^"]*\btheme-toggle\b|id="themeToggle"', html) is not None,
-         "No visible light/dark theme toggle.")
-    has_dark = re.search(r'data-theme=.?dark|:root\s*\{', html) is not None
-    has_light = re.search(r'data-theme=.?light', html) is not None
-    need("theme_both", has_dark and has_light,
-         "Theme tokens must exist for BOTH dark and light (found dark=%s light=%s)." % (has_dark, has_light))
-    want("theme_persist", "localStorage" in html,
-         "Theme choice is not persisted (no localStorage) — it will reset on reload.")
 
-    # ---- Charts ----
-    uses_charts = re.search(r'\bchart\b|Plotly|data-chart', html) is not None
-    checks["uses_charts"] = uses_charts
-    if uses_charts:
-        need("plotly", "Plotly" in html or "plotly" in html,
-             "Charts referenced but Plotly is not included (CDN <script> or inlined lib).")
-        want("plotly_theme", re.search(r"relayout|Plotly\.react|themeColors|build\(", html) is not None,
-             "Charts may not restyle when the theme changes — re-render/relayout on toggle.")
-
-    # ---- Content hygiene ----
-    leftovers = sorted(set(m.group(0) for m in PLACEHOLDERS.finditer(html)))
-    checks["placeholders"] = leftovers
-    if leftovers:
-        errors.append(f"Leftover placeholder/boilerplate text: {leftovers}")
-
-    return errors, warnings, checks
+def _check_report(html, need, want, checks):
+    # ---- Long-form report structure ----
+    n_sections = len(re.findall(r'class="[^"]*\breport-section\b', html))
+    checks["n_sections"] = n_sections
+    need("sections", n_sections >= 2,
+         f"Found {n_sections} .report-section blocks; a report needs at least 2.")
+    # Sections must be anchorable and the page must link to them (in-page TOC).
+    ids = set(re.findall(r'<section[^>]*class="[^"]*\breport-section\b[^"]*"[^>]*\bid="([^"]+)"', html))
+    ids |= set(re.findall(r'<section[^>]*\bid="([^"]+)"[^>]*class="[^"]*\breport-section\b', html))
+    checks["section_ids"] = sorted(ids)
+    need("section_anchors", len(ids) >= 2,
+         "Report sections need unique id anchors so the TOC and deep links work.")
+    need("toc", re.search(r'class="[^"]*\btoc\b|id="toc"', html) is not None,
+         "No table of contents (.toc / #toc) — required for a navigable long-form report.")
+    anchor_links = set(re.findall(r'href="#([^"]+)"', html))
+    want("toc_links", len(anchor_links & ids) >= 2 or "data-toc" in html,
+         "TOC does not appear to link to section anchors (href=\"#id\" or data-toc entries).")
+    want("scrollspy", "IntersectionObserver" in html,
+         "No scroll-spy (IntersectionObserver) — the TOC won't track the current section.")
+    # ---- Print / PDF ----
+    need("print_styles", re.search(r"@media\s+print", html) is not None,
+         "No @media print block — long-form reports must be printable / PDF-clean.")
+    want("no_horizontal_overflow", "overflow:hidden" not in html.replace(" ", "") or "overflow-x" in html,
+         "Body may be locked to a single viewport (overflow:hidden) — reports should scroll.")
 
 
 def main():
@@ -105,6 +171,7 @@ def main():
 
     report = {
         "file": str(path),
+        "format": checks.get("format"),
         "status": "OK" if not errors else "FAIL",
         "checks": checks,
         "warnings": warnings,
