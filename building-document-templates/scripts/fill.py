@@ -257,6 +257,18 @@ def main():
 
     data = json.loads(Path(args.data).read_text(encoding="utf-8"))
     fmt = manifest["format"]
+
+    # Slides don't reflow: a value much longer than the field's example is the main
+    # overflow risk (there is no autofit). Warn early; the render/vision pass decides.
+    if fmt == "pptx":
+        for f in manifest["fields"]:
+            if f.get("type", "text") != "text":
+                continue
+            ex, val = f.get("example") or "", data.get(f["name"])
+            if ex and isinstance(val, str) and len(val) > max(60, int(len(ex) * 1.5)):
+                print(f"WARNING: '{f['name']}' is {len(val)} chars (example: {len(ex)}) — "
+                      f"slide text does not autofit; check the rendered pages for overflow.")
+
     missing = render(fmt, template_path, data, manifest, args.out)
 
     print(f"Filled {manifest['template_id']} -> {args.out}")

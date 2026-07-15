@@ -1,0 +1,159 @@
+{
+  "format": "deck",
+  "brand": "default",
+  "meta": {
+    "title": "Q3 2026 Business Update",
+    "title_accent": "Business Update",
+    "eyebrow": "Executive Review · Q3 2026",
+    "lead": "Quarterly performance against target — what moved, what's at risk, and the decisions we need this quarter.",
+    "author": "Prepared by Finance & Operations",
+    "date": "15 October 2026",
+    "kpis": [
+      { "label": "Revenue", "value": "$4.82m", "delta": "▲ 9% vs Q2" },
+      { "label": "Gross Margin", "value": "63.4%", "delta": "▲ 1.2 pts" },
+      { "label": "New Clients", "value": "14", "delta": "▲ 5" },
+      { "label": "NPS", "value": "58", "delta": "▼ 3", "down": true }
+    ]
+  },
+  "slides": [
+    {
+      "type": "section",
+      "heading": "Performance vs target",
+      "note": "Where the quarter landed against the plan we committed in January."
+    },
+    {
+      "type": "chart",
+      "heading": "Revenue tracked above target from August",
+      "note": "Monthly revenue vs target, $m.",
+      "chart": {
+        "chart_type": "line",
+        "categories": ["Jul", "Aug", "Sep"],
+        "series": [
+          { "name": "Actual", "values": [1.48, 1.61, 1.73] },
+          { "name": "Target", "values": [1.5, 1.55, 1.6] }
+        ],
+        "y_title": "$m"
+      },
+      "body": "July closed marginally under plan; August and September both beat target on the strength of two enterprise renewals and the phased go-live of the logistics engagement."
+    },
+    {
+      "type": "kpi",
+      "heading": "Unit economics held while volume grew",
+      "note": "Quarter-on-quarter movement in the metrics leadership tracks.",
+      "kpis": [
+        { "label": "Avg deal size", "value": "$86k", "delta": "▲ 12%" },
+        { "label": "Delivery utilisation", "value": "81%", "delta": "▲ 2 pts" },
+        { "label": "Churned accounts", "value": "2", "delta": "flat" }
+      ]
+    },
+    {
+      "type": "section",
+      "heading": "What moved the needle",
+      "note": "The three drivers behind the beat — and one drag."
+    },
+    {
+      "type": "cards",
+      "heading": "Drivers of the quarter",
+      "note": "Ranked by revenue impact.",
+      "cards": [
+        { "heading": "Enterprise renewals", "text": "Both flagship accounts renewed multi-year with expanded scope.", "big": "$1.1m", "accent": true },
+        { "heading": "Logistics go-live", "text": "Phase 1 delivered on time; phase 2 booked for Q4.", "big": "$640k" },
+        { "heading": "Advisory upsell", "text": "Optimisation reviews converted into three delivery engagements.", "big": "$310k" },
+        { "heading": "Drag: onboarding lag", "text": "Two new-client starts slipped into Q4, deferring recognised revenue.", "big": "-$220k" }
+      ]
+    },
+    {
+      "type": "two-col",
+      "heading": "Pipeline is deeper but slower",
+      "note": "Coverage improved; conversion cycle lengthened.",
+      "left": {
+        "type": "chart",
+        "chart": {
+          "chart_type": "bar",
+          "categories": ["Q1", "Q2", "Q3"],
+          "series": [
+            { "name": "Qualified pipeline", "values": [6.2, 7.1, 8.4] },
+            { "name": "Closed won", "values": [3.9, 4.4, 4.8] }
+          ]
+        }
+      },
+      "right": {
+        "type": "bullets",
+        "items": [
+          { "text": "Coverage ratio now 1.75x", "sub": "up from 1.6x in Q2" },
+          { "text": "Average cycle 74 days", "sub": "11 days longer than Q2" },
+          "Two strategic pursuits at contract stage",
+          "Public-sector bid decision expected November"
+        ]
+      }
+    },
+    {
+      "type": "timeline",
+      "heading": "The road to year-end",
+      "note": "Milestones between now and the January board meeting.",
+      "milestones": [
+        { "label": "October", "title": "Q4 hiring approved", "description": "Two senior delivery roles signed off and posted.", "done": true },
+        { "label": "November", "title": "Public-sector bid decision", "description": "Go/no-go with the bid team allocated through the decision date." },
+        { "label": "December", "title": "CS recovery checkpoint", "description": "NPS re-survey of the five detractor accounts." },
+        { "label": "January", "title": "Board review", "description": "Full-year close and the FY27 plan." }
+      ]
+    },
+    {
+      "type": "comparison",
+      "heading": "Where we stand vs where we planned",
+      "note": "The January plan against the Q3 close.",
+      "left": {
+        "title": "January plan",
+        "items": [
+          "Revenue $4.63m by Q3",
+          "Margin held at 62%",
+          "Ten new clients",
+          "Two enterprise renewals at flat scope"
+        ]
+      },
+      "right": {
+        "title": "Q3 actual",
+        "items": [
+          "Revenue $4.82m — 4% beat",
+          "Margin up 1.2 pts to 63.4%",
+          "Fourteen new clients",
+          "Both renewals expanded multi-year"
+        ]
+      }
+    },
+    {
+      "type": "quote",
+      "quote": "The renewals weren't bought — they were earned by the delivery team showing up every single sprint.",
+      "attribution": "Chief Operating Officer, September review"
+    },
+    {
+      "type": "image",
+      "heading": "How the delivery pipeline flows",
+      "src": "sample-figure.png",
+      "alt": "Three-stage delivery pipeline diagram",
+      "caption": "Delivery pipeline, simplified. Source: operations playbook."
+    },
+    {
+      "type": "table",
+      "heading": "Top risk items and owners",
+      "note": "Reviewed weekly at the delivery board.",
+      "columns": ["Risk", "Impact", "Likelihood", "Owner", "Mitigation"],
+      "rows": [
+        ["Key-person dependency on logistics engagement", "High", "Medium", "COO", "Shadow resourcing from October"],
+        ["NPS decline in mid-market segment", "Medium", "High", "Head of CS", "Recovery plan with top 5 detractor accounts"],
+        ["FX exposure on multi-year renewals", "Medium", "Medium", "CFO", "Hedging review with treasury"]
+      ]
+    },
+    {
+      "type": "closing",
+      "eyebrow": "Decisions requested",
+      "heading": "What we need from this group",
+      "lead": "Three approvals to bank the momentum and de-risk Q4.",
+      "cards": [
+        { "heading": "Hire ahead of demand", "text": "Approve two senior delivery hires to protect the Q4 start dates." },
+        { "heading": "Fund the CS recovery plan", "text": "Dedicated success manager for the mid-market detractor accounts." },
+        { "heading": "Commit to the public-sector bid", "text": "Bid team allocation through November decision date." }
+      ]
+    }
+  ]
+}

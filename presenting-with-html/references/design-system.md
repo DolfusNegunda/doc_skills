@@ -55,8 +55,7 @@ light `:root` blocks — every chart series, gradient title, dot, and active-TOC
 from them, so the whole piece re-skins from three values. Keep the neutral bg/text/glass
 tokens unless a brand demands otherwise, and re-run the vision QA to confirm contrast holds
 in both themes. For the authoritative palette see
-[../../document-branding-standards/SKILL.md](../../document-branding-standards/SKILL.md) and
-[../../authoring-brand-guidelines/SKILL.md](../../authoring-brand-guidelines/SKILL.md).
+[../../brands/README.md](../../brands/README.md).
 
 ## Slide model (deck format)
 Presentation deck, not a scrolling page. One full-viewport `.slide` per section; content

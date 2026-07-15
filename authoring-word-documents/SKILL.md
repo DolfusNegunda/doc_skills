@@ -1,6 +1,6 @@
 ---
 name: authoring-word-documents
-description: Produce well-structured, professional Microsoft Word (.docx) documents — reports, manuals, contracts, proposals, and long-form docs — using styles, headings, tables of contents, sections, headers/footers, and cross-references. Use when the user asks to "create a Word doc", "write a report in Word", "format a .docx", generate a manual or contract, or needs a structured multi-page document. Produces a clean, navigable, style-driven .docx rather than hand-formatted text.
+description: Produce well-structured, professional Microsoft Word (.docx) documents — reports, manuals, contracts, proposals, and long-form docs — using styles, headings, tables of contents, sections, headers/footers, and cross-references. Use when the user asks to "create a Word doc", "write a report in Word", "format a .docx", generate a manual or contract, or needs a structured multi-page document. STEP 0 — before authoring anything, check the built-in template library (registry.py list): standard documents (business report, memo, meeting minutes, one-pager) exist as branded, fill-ready templates where you only write a content JSON — the safest path for any model. Author with python-docx only for bespoke documents.
 ---
 
 # Authoring Word Documents
@@ -9,8 +9,8 @@ description: Produce well-structured, professional Microsoft Word (.docx) docume
 Structured authoring of `.docx` files where layout, navigation, and consistency
 matter. Covers document architecture (styles, headings, TOC, sections,
 headers/footers, captions, cross-references) — not the prose craft (writing-reports)
-or brand rendering (see
-[producing-branded-documents](../producing-branded-documents/SKILL.md)).
+or brand rendering (branding
+comes from the shared brand packs — [../brands/README.md](../brands/README.md)).
 
 ## Purpose
 Deliver a Word document a professional would accept without rework: every heading
@@ -28,7 +28,6 @@ structure survives edits.
 - Data-heavy tabular output → engineering-excel-workbooks.
 - Slides → [building-powerpoint-decks](../building-powerpoint-decks/SKILL.md).
 - Fixed-layout final artifacts → processing-pdf-documents.
-- Applying corporate brand → [producing-branded-documents](../producing-branded-documents/SKILL.md).
 
 ## Inputs
 - Content (draft prose, Markdown, bullet outline, or a brief).
@@ -42,9 +41,34 @@ structure survives edits.
   numbers, and figure/table numbering.
 - A short changelog of structural decisions when converting from another format.
 
+## Step 0 — Fill a built-in template before you build (decision gate)
+The suite ships branded, fill-ready document templates in the document-template
+registry — `business_report`, `memo`, `meeting_minutes`, `one_pager` — each with a
+real style architecture, logo header, legal footer, and repeating table rows where
+content repeats. If the requested document matches one, **do not author it**; run the
+deterministic fill path (safe for any model, however small):
+
+```bash
+cd ../building-document-templates
+python scripts/registry.py list                                          # what exists
+python scripts/registry.py scaffold --builtin business-report --out content.json
+# edit content.json (field-by-field guidance is printed by scaffold)
+python scripts/fill.py --client _builtin --doc-type business_report --data content.json --out out.docx
+python scripts/validate.py out.docx --template registry/_builtin/business_report/template.docx \
+    --manifest registry/_builtin/business_report/manifest.json           # must be OK
+python scripts/render_pages.py out.docx --out-dir pages/                 # vision pass, every page
+```
+
+The library is generated per brand pack by
+[scripts/build_doc_library.py](scripts/build_doc_library.py) (see
+[../brands/README.md](../brands/README.md)); externally sourced templates join it via
+[../building-document-templates/references/external-intake.md](../building-document-templates/references/external-intake.md).
+Continue below **only** when no template fits.
+
 ## Workflow
 ```
 Progress:
+- [ ] 0. Check the built-in library first (registry.py list) — fill, don't build, when a template fits
 - [ ] 1. Confirm type, audience, length, and required structural features
 - [ ] 2. Build the outline (heading hierarchy) before any prose
 - [ ] 3. Apply named styles — never manual/direct formatting for structure
@@ -101,8 +125,7 @@ fields — the validator checks content, not rendered field output.
 - **Template exists?** Use it and inherit its styles. Otherwise define a minimal
   style set (Title, H1–H3, Body, Caption, Quote, List).
 - **Recurring layout?** → [building-document-templates](../building-document-templates/SKILL.md).
-- **Personalized copies for many recipients?** → [running-mail-merge](../running-mail-merge/SKILL.md).
-- **Same doc every period from data?** → [automating-document-generation](../automating-document-generation/SKILL.md).
+- **Same doc every period from data?** → register it as a template and loop `fill.py` over the data ([building-document-templates](../building-document-templates/SKILL.md)).
 
 ## Common mistakes
 - **Fake headings** (manually bolded text) — breaks TOC and accessibility. Use styles.
@@ -133,7 +156,6 @@ fields — the validator checks content, not rendered field output.
 ## Related skills
 - writing-reports, writing-proposals, writing-policies — the prose that fills the structure.
 - formatting-documents — consistency rules.
-- [producing-branded-documents](../producing-branded-documents/SKILL.md) — corporate brand rendering.
 - comparing-documents — track changes between versions.
 
 ## Reference files
@@ -142,6 +164,9 @@ fields — the validator checks content, not rendered field output.
 
 ## Scripts
 - [scripts/validate_docx.py](scripts/validate_docx.py) — **run this** before delivery.
+- [scripts/build_doc_library.py](scripts/build_doc_library.py) — **Step 0 source.** Generates
+  the built-in fill-ready document library (business_report, memo, meeting_minutes, one_pager)
+  into the document-template registry from a brand pack (`--brand <name-or-path>`), each with its manifest.
   Fails on unfilled tags / placeholders; warns on missing heading styles, images with
   no alt text, and non-Letter/A4 page size. JSON report, non-zero exit on error →
   drives the Step 8 loop. Requires `python-docx`.
@@ -157,5 +182,5 @@ and footer page numbers — delivered with a one-line note on the style mapping 
 
 ## Automation opportunities
 - Generate the doc from a Markdown/JSON source so content and layout regenerate together.
-- Pair with [automating-document-generation](../automating-document-generation/SKILL.md) for periodic reports.
+- For periodic reports, register the document as a template and drive `fill.py` from the data source.
 - Store the style set as a `.dotx` template for one-click reuse.

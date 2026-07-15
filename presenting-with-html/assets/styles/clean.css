@@ -1,0 +1,38 @@
+
+  /* ===== STYLE PRESET: clean corporate =====
+     Light-first, flat panels, hairline borders, print-oriented, conservative
+     typography. Appended after the base stylesheet by build_html.py; overrides
+     the boardroom glass look while keeping the identical class vocabulary. */
+  :root, :root[data-theme="dark"] {
+    --bg-0:#10151D; --bg-1:#10151D; --bg-glow:transparent;
+    --glass-bg:#161D28; --glass-border:rgba(255,255,255,.13);
+    --card-bg:#1B2330; --shadow:none; --grid:rgba(255,255,255,.09);
+  }
+  :root[data-theme="light"] {
+    --bg-0:#F6F8FA; --bg-1:#F6F8FA; --bg-glow:transparent;
+    --glass-bg:#FFFFFF; --glass-border:rgba(15,23,42,.14);
+    --card-bg:#FFFFFF; --shadow:0 1px 3px rgba(15,23,42,.08); --grid:rgba(15,23,42,.09);
+  }
+  body { background:var(--bg-0); }
+  .slide-inner, .report-section, .toc {
+    backdrop-filter:none; -webkit-backdrop-filter:none; border-radius:12px;
+  }
+  .kpi, .card, .chart-panel, .compare-panel, .figure, .brand-mark, .hero-logo { border-radius:10px; }
+  .table-wrap { border-radius:8px; }
+  thead th { backdrop-filter:none; }
+  .accent, .section-num {
+    background:none; -webkit-background-clip:initial; background-clip:initial; color:var(--accent);
+  }
+  .bullets li::before {
+    background:var(--accent); border-radius:50%; transform:none; width:8px; height:8px;
+  }
+  .compare-panel li::before { background:var(--accent); border-radius:50%; transform:none; }
+  .compare-panel.alt li::before { background:var(--accent-2); }
+  .dot.active { background:var(--accent); }
+  .nav-btn, .theme-toggle, .slide-count, .to-top {
+    backdrop-filter:none; background:var(--glass-bg); box-shadow:0 1px 3px rgba(15,23,42,.10);
+  }
+  .timeline::before { background:var(--accent); opacity:.3; }
+  h1 { font-weight:750; letter-spacing:-.015em; }
+  h2 { font-weight:700; }
+  .kpi .value { font-weight:750; }

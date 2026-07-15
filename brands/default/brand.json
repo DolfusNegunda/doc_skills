@@ -1,0 +1,29 @@
+{
+  "name": "default",
+  "display_name": "Default (neutral professional)",
+  "colors": {
+    "primary": "#2563EB",
+    "dark": "#0F172A",
+    "accent": "#0891B2",
+    "accent_2": "#7C3AED",
+    "alert": "#DC2626",
+    "ink": "#0F172A",
+    "muted": "#54617A",
+    "bg": "#FFFFFF",
+    "panel": "#F1F5F9",
+    "hairline": "#E2E8F0"
+  },
+  "fonts": {
+    "heading": "Segoe UI",
+    "body": "Segoe UI"
+  },
+  "logo": null,
+  "footer": {
+    "copyright": "",
+    "confidentiality": ""
+  },
+  "company": {
+    "display_name": "",
+    "website": ""
+  }
+}

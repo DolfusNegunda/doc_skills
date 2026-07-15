@@ -1,6 +1,6 @@
 ---
 name: building-powerpoint-decks
-description: Build clean, on-brand Microsoft PowerPoint (.pptx) decks from content or an outline — using slide masters, consistent layouts, readable typography, and purposeful visuals. Use when the user asks to "make a PowerPoint", "create slides / a deck", "turn this into a presentation", or build a pitch/board/training deck. Produces a professional, consistent .pptx. For the narrative and story arc first, pair with crafting-presentation-narratives.
+description: Build clean, on-brand Microsoft PowerPoint (.pptx) decks from content or an outline — using slide masters, consistent layouts, readable typography, and purposeful visuals. Use when the user asks to "make a PowerPoint", "create slides / a deck", "turn this into a presentation", or build a pitch/board/training deck. STEP 0 — before authoring anything, check the built-in template library (registry.py list): standard deck shapes (exec update/QBR, kickoff, proposal, report-out) exist as branded, fill-ready templates where you only write a content JSON — the safest path for any model. Author with python-pptx only for bespoke decks. For the narrative and story arc first, pair with crafting-presentation-narratives.
 ---
 
 # Building PowerPoint Decks
@@ -10,11 +10,34 @@ Turning approved content into a professional `.pptx`: slide architecture, master
 layout use, typography, visual hierarchy, charts, and consistency. The story and
 message design come first from
 [crafting-presentation-narratives](../crafting-presentation-narratives/SKILL.md);
-brand application from [producing-branded-documents](../producing-branded-documents/SKILL.md).
+brand application from the shared brand packs ([../brands/README.md](../brands/README.md)).
 
 ## Purpose
 Produce a deck that is visually consistent, readable from the back of a room, and
 built on masters so it can be restyled or extended without manual cleanup.
+
+## Step 0 — Fill a built-in template before you build (decision gate)
+The suite ships branded, fill-ready deck templates in the document-template registry —
+`exec_update` (QBR/quarterly review), `project_kickoff`, `proposal`, `report_out`. If the
+requested deck matches one, **do not author slides at all**; run the deterministic fill
+path (safe for any model, however small):
+
+```bash
+cd ../building-document-templates
+python scripts/registry.py list                                        # what exists
+python scripts/registry.py scaffold --builtin exec-update --out content.json
+# edit content.json (field-by-field guidance is printed by scaffold)
+python scripts/fill.py --client _builtin --doc-type exec_update --data content.json --out out.pptx
+python scripts/validate.py out.pptx --template registry/_builtin/exec_update/template.pptx \
+    --manifest registry/_builtin/exec_update/manifest.json             # must be OK
+python ../building-powerpoint-decks/scripts/render_pptx.py out.pptx    # vision pass, every slide
+```
+
+The library is generated per brand pack by
+[scripts/build_template_library.py](scripts/build_template_library.py) (see
+[../brands/README.md](../brands/README.md)); externally sourced templates join it via
+[../building-document-templates/references/external-intake.md](../building-document-templates/references/external-intake.md).
+Continue below **only** when no template fits (bespoke structure, unusual format).
 
 ## Core principle: adapt the starter deck, don't reinvent it
 [assets/starter-template.pptx](assets/starter-template.pptx) is a complete, styled,
@@ -53,6 +76,7 @@ drop the org's real `.potx` over the theme ("branding is data, not code").
 ## Workflow
 ```
 Progress:
+- [ ] 0. Check the built-in library first (registry.py list) — fill, don't build, when a template fits
 - [ ] 1. Lock the narrative: one message per slide, in order
 - [ ] 2. Copy assets/starter-template.pptx (or the org .potx); confirm the layouts you need
 - [ ] 3. Draft slides as headlines (the takeaway is the title)
@@ -165,7 +189,6 @@ file — the analog of inlining Plotly in the HTML skill. Before sending:
 ## Related skills
 - [crafting-presentation-narratives](../crafting-presentation-narratives/SKILL.md) — story before slides.
 - building-google-slides — Google equivalent.
-- [producing-branded-documents](../producing-branded-documents/SKILL.md) — brand application.
 - designing-dashboards — for live data views.
 
 ## Reference files
@@ -182,6 +205,10 @@ file — the analog of inlining Plotly in the HTML skill. Before sending:
   per slide (PowerPoint COM; LibreOffice fallback) so you can Read the actual look. `pywin32`.
 - [scripts/build_starter_template.py](scripts/build_starter_template.py) — (re)generates the
   starter deck; edit `PALETTE`/`FONT` to re-brand. `python-pptx`.
+- [scripts/build_template_library.py](scripts/build_template_library.py) — **Step 0 source.**
+  Generates the built-in fill-ready deck library (exec_update, project_kickoff, proposal,
+  report_out) into the document-template registry from a brand pack (`--brand <name-or-path>`), each with
+  its manifest. `python-pptx` + `pillow`.
 
 ## Examples
 **Input:** "Turn this 6-page strategy memo into a 10-slide board deck."

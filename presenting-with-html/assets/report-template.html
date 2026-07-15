@@ -11,6 +11,10 @@
   deck-template.html so both output formats read as one system.
   HOW TO USE: copy this file, replace the CONTENT (text, KPI numbers, chart data,
   table rows, sections) — keep the structure, CSS design tokens, and JS behavior.
+  Every sample section carries a data-sample attribute: REMOVE it from each section
+  as you replace its content. The validator fails the file while any remain, so
+  sample content can never ship by accident. Never append a second document — edit
+  in place.
   Add/remove <section class="report-section" id="..."> blocks; the TOC and scroll-spy
   update automatically from the sections present.
   DELIVERY: charts load Plotly from a CDN for instant preview. Before you SHIP the file
@@ -160,7 +164,7 @@
   <main class="content" id="content">
 
     <!-- HERO -->
-    <section class="report-section hero" id="overview" data-toc="Overview">
+    <section class="report-section hero" id="overview" data-toc="Overview" data-sample>
       <div class="eyebrow">Report · Q1 2026</div>
       <h1>AI Platform Spend <span class="accent">&amp; Adoption</span></h1>
       <p class="lead">A detailed quarterly view of platform cost and usage across the organization —
@@ -175,7 +179,7 @@
     </section>
 
     <!-- HIGHLIGHTS -->
-    <section class="report-section" id="highlights" data-toc="Highlights">
+    <section class="report-section" id="highlights" data-toc="Highlights" data-sample>
       <h2>Highlights</h2>
       <p class="section-note">The observations that matter for the quarter.</p>
       <div class="grid">
@@ -189,7 +193,7 @@
     </section>
 
     <!-- OVERALL TREND -->
-    <section class="report-section" id="trend" data-toc="Monthly trend">
+    <section class="report-section" id="trend" data-toc="Monthly trend" data-sample>
       <h2>Monthly Spend by Company</h2>
       <p class="section-note">Grouped by month; friendly labels; unified hover. Charts restyle with the theme.</p>
       <div class="chart-panel"><div class="chart" data-chart="overall"></div></div>
@@ -198,7 +202,7 @@
     </section>
 
     <!-- DETAIL (a report can carry many of these) -->
-    <section class="report-section" id="detail-northwind" data-toc="Detail — Northwind">
+    <section class="report-section" id="detail-northwind" data-toc="Detail — Northwind" data-sample>
       <h2>Northwind — User Detail</h2>
       <div class="kpi-row">
         <div class="kpi"><div class="label">Jan</div><div class="value">$41k</div></div>
@@ -224,7 +228,7 @@
     </section>
 
     <!-- CONCLUSION -->
-    <section class="report-section" id="recommendations" data-toc="Recommendations">
+    <section class="report-section" id="recommendations" data-toc="Recommendations" data-sample>
       <div class="eyebrow">Recommendation</div>
       <h2>What to do next</h2>
       <p class="lead">Spend is rising and concentrated. Tie it to outcomes and hold a monthly governance review

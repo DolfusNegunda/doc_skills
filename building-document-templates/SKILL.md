@@ -50,7 +50,7 @@ a **gallery** keyed by client and document type, and **fill** it on demand to pr
 consistent future documents. Covers Word (`.docx`) and PowerPoint (`.pptx`) end to
 end. Excel and PDF are handled at the edges — see **Format support** below. The
 one-off document itself is built with the relevant authoring skill; brand comes from
-[producing-branded-documents](../producing-branded-documents/SKILL.md).
+the shared brand packs ([../brands/README.md](../brands/README.md)).
 
 ## Core principle: preserve + inject, never rebuild
 A client's file **already is the template** — its layout, fonts, logos, slide masters
@@ -84,15 +84,36 @@ scripts/
   fill.py         # template + data JSON -> finished document; expands LIST bullets AND table ROW-GROUPS (+ optional --export-pdf)
   validate.py     # gate: no leftover tags, structure preserved, SOURCE-RESIDUE check, unsupported-object surface
   render_pages.py # render docx/pptx/pdf -> one PNG per page for VISION inspection (faithful: shows logos/branding/graphics)
-  registry.py     # browse the gallery: list / find / show templates
+  registry.py     # browse the gallery: list / find / show / SCAFFOLD a ready-to-edit content.json
   common.py       # format detection, placeholders, manifest I/O, docProps, image slots, unsupported-object detection
 registry/
+  _builtin/<name>/                     # SHIPPED generic templates (exec_update, proposal, business_report, memo, …)
+      template.docx|pptx               # brand-pack-generated (see ../brands/), tags + manifest from one script
+      manifest.json                    # committed to git — no client data
   _families/<family>/                  # GOVERNED canonical family templates (Lessons Learned, Change Note, …)
       template.docx|pptx               # branding/structure preserved, all content -> placeholders/row-groups
       manifest.json                    # fields, row_groups, source_terms, owner, version, changelog
   <client>/<doc-type>/                 # optional per-client instances (default is: fill the family template, don't fork)
 ```
 Point `$TEMPLATE_REGISTRY` at a shared folder to keep the gallery outside the repo.
+
+**Built-ins (`_builtin`)** are generic, client-free templates that ship with the suite:
+four decks from `../building-powerpoint-decks/scripts/build_template_library.py` and four
+documents from `../authoring-word-documents/scripts/build_doc_library.py`, regenerated per
+brand pack (`--brand <name-or-path>`; see [../brands/README.md](../brands/README.md)). Externally
+sourced professional templates are registered into the same namespace via
+[references/external-intake.md](references/external-intake.md) (`templatize.py build --builtin <name>`).
+
+**The small-model fill loop** (any registered template — builtin, family, or client):
+```bash
+python scripts/registry.py list                                     # discover
+python scripts/registry.py scaffold --builtin exec-update --out content.json   # keys + guidance
+# edit content.json values (scaffold prints per-field guidance; --with-examples prefills
+# the manifest's examples, which MUST be edited — they trip the source-residue check)
+python scripts/fill.py --client _builtin --doc-type exec_update --data content.json --out out.pptx
+python scripts/validate.py out.pptx --template <template> --manifest <manifest>   # must be OK
+python scripts/render_pages.py out.pptx --out-dir pages/            # vision pass, every page
+```
 
 **Engine capabilities added for the family system:**
 - **Table-row expansion (`fill.py`)** — a `row_group` in the manifest (`{name, columns:[field,…]}`)
@@ -337,8 +358,7 @@ build, classify every embedded image:
 
 ## Related skills
 - [authoring-word-documents](../authoring-word-documents/SKILL.md), [building-powerpoint-decks](../building-powerpoint-decks/SKILL.md) — build the one-off the template is learned from.
-- [producing-branded-documents](../producing-branded-documents/SKILL.md) — brand/logo rendering pipeline.
-- [running-mail-merge](../running-mail-merge/SKILL.md), [automating-document-generation](../automating-document-generation/SKILL.md) — bulk fills from a data source.
+- Bulk generation: loop `fill.py` over rows of a data source — one content.json per output.
 - [processing-word-documents](../processing-word-documents/SKILL.md), [processing-powerpoint-files](../processing-powerpoint-files/SKILL.md) — extract content to feed a fill.
 - Detection heuristics, placeholder rules, per-format notes: [references/engine-design.md](references/engine-design.md).
 

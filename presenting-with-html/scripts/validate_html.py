@@ -9,8 +9,10 @@ presenting-with-html pattern. The skill ships two formats:
 The format is read from `data-format="deck|report"` on the <html> element and
 defaults to "deck" when the marker is absent (so older decks still validate).
 
-Some checks are FORMAT-AGNOSTIC and enforced in both modes — both theme token
-sets, a persisted toggle, Plotly present when charts are used, theme-aware chart
+Some checks are FORMAT-AGNOSTIC and enforced in both modes — document integrity
+(one DOCTYPE/html/body, nothing after </html>, unique element IDs, no live
+data-sample template content, classes actually defined), both theme token sets,
+a persisted toggle, Plotly present when charts are used, theme-aware chart
 re-render, and no leftover placeholders. The rest are mode-specific: a deck must
 have slide/nav structure; a report must have sections, an in-page TOC/anchors,
 and print styles.
@@ -33,6 +35,13 @@ from pathlib import Path
 
 PLACEHOLDERS = re.compile(r"\{\{.*?\}\}|lorem\s+ipsum|\bTODO\b|\bTBD\b|\bFIXME\b", re.I)
 CDN_PLOTLY = re.compile(r'src\s*=\s*["\']https?://[^"\']*plot(?:ly|\.ly)[^"\']*["\']', re.I)
+UNPINNED_PLOTLY = re.compile(r'plotly-latest(?:\.min)?\.js', re.I)
+ID_ATTR = re.compile(r'<[a-zA-Z][^>]*\bid\s*=\s*["\']([^"\']+)["\']')
+CLASS_ATTR = re.compile(r'<[a-zA-Z][^>]*\bclass\s*=\s*["\']([^"\']+)["\']')
+CSS_CLASS = re.compile(r'\.(-?[_a-zA-Z][_a-zA-Z0-9-]*)')
+DATA_SAMPLE = re.compile(r'<[a-zA-Z][^>]*\bdata-sample\b')
+# Classes toggled/created by the standard shell JS rather than authored in markup.
+JS_MANAGED_CLASSES = {"active", "down", "show", "dot"}
 
 
 def detect_format(html: str) -> str:
@@ -63,6 +72,52 @@ def check_html(raw: str) -> tuple[list[str], list[str], dict]:
     fmt = detect_format(html)
     checks["format"] = fmt
 
+    # ================= DOCUMENT INTEGRITY (both modes) =================
+    # These catch the "concatenated a second document onto the boilerplate" failure
+    # mode: duplicated shells, duplicate IDs that silently break every JS hook, and
+    # template sample content shipped live.
+    need("single_doctype", len(re.findall(r"<!DOCTYPE", html, re.I)) == 1,
+         "Exactly one <!DOCTYPE> required — more than one means two documents were "
+         "concatenated into this file.")
+    for tag in ("html", "head", "body"):
+        n_open = len(re.findall(rf"<{tag}\b", html, re.I))
+        checks[f"n_{tag}"] = n_open
+        need(f"single_{tag}", n_open <= 1,
+             f"Found {n_open} <{tag}> tags — a valid page has one. Content was appended "
+             f"instead of replacing the template's sample content.")
+    m_end = re.search(r"</html\s*>", html, re.I)
+    trailing = html[m_end.end():].strip() if m_end else ""
+    need("nothing_after_html", not trailing,
+         f"Markup found after </html> ({len(trailing)} chars) — the file contains a second, "
+         "orphaned document that browsers render unstyled or not at all.")
+
+    ids = ID_ATTR.findall(html)
+    dupes = sorted({i for i in ids if ids.count(i) > 1})
+    checks["duplicate_ids"] = dupes
+    need("unique_ids", not dupes,
+         f"Duplicate element IDs {dupes} — getElementById binds only the first, so nav "
+         "buttons/counters/theme toggles silently break.")
+
+    n_samples = len(DATA_SAMPLE.findall(html))
+    checks["sample_blocks"] = n_samples
+    need("no_sample_content", n_samples == 0,
+         f"{n_samples} block(s) still carry the data-sample marker — the template's example "
+         "content is shipping live. Replace the content AND remove each data-sample attribute.")
+
+    # Classes referenced in markup but never defined in <style> render unstyled —
+    # usually invented class names. Warning (heuristic: JS-managed and SVG cases exist).
+    defined = set()
+    for style_block in re.findall(r"<style[^>]*>(.*?)</style>", html, re.S | re.I):
+        defined |= set(CSS_CLASS.findall(style_block))
+    used = set()
+    for cls in CLASS_ATTR.findall(html):
+        used |= set(cls.split())
+    undefined = sorted(used - defined - JS_MANAGED_CLASSES)
+    checks["undefined_classes"] = undefined
+    want("classes_defined", not undefined,
+         f"Classes used in markup but not defined in any <style>: {undefined} — they will "
+         "render unstyled (typo or invented class name?).")
+
     # ================= FORMAT-AGNOSTIC INVARIANTS (both modes) =================
     # ---- Theme (both token sets + persistence) ----
     need("theme_toggle", re.search(r'class="[^"]*\btheme-toggle\b|id="themeToggle"', html) is not None,
@@ -87,6 +142,9 @@ def check_html(raw: str) -> tuple[list[str], list[str], dict]:
         want("plotly_selfcontained", CDN_PLOTLY.search(html) is None,
              "Plotly loads from an external CDN — not self-contained/CSP-safe. Before delivery run "
              "`python scripts/vendor_plotly.py --inline <file>` to inline the library.")
+        want("plotly_pinned", UNPINNED_PLOTLY.search(html) is None,
+             "Plotly is loaded as 'plotly-latest' — deprecated and non-reproducible. Pin a "
+             "version (the shells use 2.35.2) or inline the library.")
 
     # ---- Content hygiene (scan raw text incl. comments) ----
     leftovers = sorted(set(m.group(0) for m in PLACEHOLDERS.finditer(raw)))
