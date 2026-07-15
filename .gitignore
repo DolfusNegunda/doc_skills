@@ -1,9 +1,13 @@
 __pycache__/
 *.pyc
 # Registry holds client templates — keep it out of version control (use a private
-# gallery via $TEMPLATE_REGISTRY). Track only the README that documents each registry.
+# gallery via $TEMPLATE_REGISTRY). Track only the README that documents each registry
+# and the _builtin generics (generated, brand-parameterized, no client data).
 **/registry/*/
 !**/registry/README.md
+!**/registry/_builtin/
+# Client files dropped for templatisation — never commit source documents.
+building-document-templates/incoming/
 ~$*
 .DS_Store
 

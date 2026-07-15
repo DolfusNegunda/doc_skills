@@ -443,18 +443,26 @@ def build(args):
             required=True,
         ))
 
-    # Family model (default) vs. per-client instance. A family template lives under
-    # registry/_families/<family>/ and is what future files of that family converge to.
+    # Family model (default) vs. built-in generic vs. per-client instance. A family
+    # template lives under registry/_families/<family>/ and is what future files of that
+    # family converge to; --builtin registers a client-free generic (e.g. an externally
+    # sourced professional template) under registry/_builtin/<name>/.
     if args.family:
         tdir = C.family_dir(args.family)
         client_id, doc_type_id = "_families", C.slugify(args.family)
         template_id = f"_families/{doc_type_id}"
+    elif args.builtin:
+        doc_type_id = C.slugify(args.builtin)
+        tdir = C.template_dir("_builtin", doc_type_id)
+        client_id = "_builtin"
+        template_id = f"_builtin/{doc_type_id}"
     elif args.client and args.doc_type:
         tdir = C.template_dir(args.client, args.doc_type)
         client_id, doc_type_id = C.slugify(args.client), C.slugify(args.doc_type)
         template_id = f"{client_id}/{doc_type_id}"
     else:
-        sys.exit("Provide --family <name> (the family model), or --client and --doc-type.")
+        sys.exit("Provide --family <name> (the family model), --builtin <name> (a generic), "
+                 "or --client and --doc-type.")
     tdir.mkdir(parents=True, exist_ok=True)
     template_file = f"template.{fmt}"
 
@@ -550,6 +558,8 @@ def main():
     b.add_argument("--fields", required=True, help="Reviewed proposal JSON")
     b.add_argument("--family", help="Family name -> registry/_families/<family>/ "
                                     "(the family model; preferred over --client/--doc-type)")
+    b.add_argument("--builtin", help="Generic template name -> registry/_builtin/<name>/ "
+                                     "(client-free generics, e.g. externally sourced templates)")
     b.add_argument("--client", help="Per-client instance (use --family instead by default)")
     b.add_argument("--doc-type", help="Per-client instance doc type")
     b.add_argument("--source-terms", default="",

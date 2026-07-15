@@ -124,8 +124,13 @@ def load_manifest(path: Path) -> dict:
 
 # ── Registry (the template gallery) ─────────────────────────────────────────--
 def template_dir(client: str, doc_type: str) -> Path:
-    """registry/<client>/<doc_type>/ — where a template + its manifest live."""
-    return REGISTRY / slugify(client) / slugify(doc_type)
+    """registry/<client>/<doc_type>/ — where a template + its manifest live.
+
+    The reserved namespaces `_builtin` (shipped generic templates) and `_families`
+    (governed canonicals) pass through unslugified so `--client _builtin` resolves.
+    """
+    ns = client if client in ("_builtin", "_families") else slugify(client)
+    return REGISTRY / ns / slugify(doc_type)
 
 
 def family_dir(family: str) -> Path:

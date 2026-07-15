@@ -258,17 +258,103 @@ def main():
         check("pptx fill expands two independent list fields",
               all(x in deck_texts for x in ("A1", "A2", "A3", "B1", "B2")))
 
-        print("presenting-with-html/validate_html.py")
+        print("presenting-with-html: build_html -> validate")
+        hdir = "presenting-with-html/scripts"
+        built_deck = tmp / "built_deck.html"
+        rc, _ = run(f"{hdir}/build_html.py", "--content",
+                    ROOT / "presenting-with-html" / "examples" / "deck-content.json",
+                    "--out", built_deck)
+        check("build_html builds the deck fixture", rc == 0 and built_deck.exists())
+        rc, d = run(f"{hdir}/validate_html.py", built_deck)
+        check("built deck passes the validator", rc == 0 and d and d["status"] == "OK")
+        built_report = tmp / "built_report.html"
+        rc, _ = run(f"{hdir}/build_html.py", "--content",
+                    ROOT / "presenting-with-html" / "examples" / "report-content.json",
+                    "--out", built_report)
+        check("build_html builds the report fixture", rc == 0 and built_report.exists())
+        rc, d = run(f"{hdir}/validate_html.py", built_report)
+        check("built report passes the validator", rc == 0 and d and d["status"] == "OK")
+
+        # second style preset builds and validates
+        built_clean = tmp / "built_clean.html"
+        rc, _ = run(f"{hdir}/build_html.py", "--content",
+                    ROOT / "presenting-with-html" / "examples" / "deck-content.json",
+                    "--out", built_clean, "--style", "clean")
+        clean_html = built_clean.read_text(encoding="utf-8") if built_clean.exists() else ""
+        check("build_html builds the clean style preset",
+              rc == 0 and 'data-style="clean"' in clean_html and 'data-theme="light"' in clean_html)
+        rc, d = run(f"{hdir}/validate_html.py", built_clean)
+        check("clean-style deck passes the validator", rc == 0 and d and d["status"] == "OK")
+
+        # bad content -> precise, non-zero failure (not a broken build)
+        (tmp / "bad_content.json").write_text(json.dumps({
+            "format": "deck", "meta": {"title": "X"},
+            "slides": [{"type": "nonsense"}]}), encoding="utf-8")
+        rc, _ = run(f"{hdir}/build_html.py", "--content", tmp / "bad_content.json",
+                    "--out", tmp / "never.html")
+        check("build_html rejects an unknown block type", rc != 0)
+
+        print("presenting-with-html/validate_html.py (integrity hardening)")
         boilerplate = ROOT / "presenting-with-html" / "assets" / "deck-template.html"
-        rc, d = run("presenting-with-html/scripts/validate_html.py", boilerplate)
-        check("html validator passes the boilerplate deck",
-              rc == 0 and d and d["status"] == "OK")
+        rc, d = run(f"{hdir}/validate_html.py", boilerplate)
+        check("validator FAILS the raw boilerplate (data-sample markers by design)",
+              rc == 1 and d and d["status"] == "FAIL" and d["checks"].get("sample_blocks", 0) > 0)
+        # Regression: the observed small-model failure — a second document appended
+        # after </html> with duplicate IDs must hard-fail.
+        deck_html = built_deck.read_text(encoding="utf-8")
+        concat = deck_html + ('<div id="deck"><section class="slide-header">'
+                              '<h1 class="slide-title">Orphan</h1></section>'
+                              '<button id="prevBtn"></button></div>')
+        (tmp / "concat.html").write_text(concat, encoding="utf-8")
+        rc, d = run(f"{hdir}/validate_html.py", tmp / "concat.html")
+        check("validator fails content appended after </html> + duplicate IDs",
+              rc == 1 and d and not d["checks"]["nothing_after_html"]
+              and d["checks"]["duplicate_ids"])
         bad_html = tmp / "bad_report.html"
         bad_html.write_text("<html><body><h1>Report {{ title }}</h1>"
                             "<p>lorem ipsum</p></body></html>", encoding="utf-8")
         rc, d = run("presenting-with-html/scripts/validate_html.py", bad_html)
         check("html validator fails a non-deck / placeholder page",
               rc == 1 and d and d["status"] == "FAIL")
+
+        print("built-in template libraries: generate -> scaffold -> fill -> validate")
+        rc, _ = run("building-powerpoint-decks/scripts/build_template_library.py",
+                    "--only", "exec_update", "--registry", reg, "--created", "2026-07-13")
+        pman = reg / "_builtin" / "exec_update" / "manifest.json"
+        check("pptx library builder registers exec_update", rc == 0 and pman.exists())
+        rc, _ = run("authoring-word-documents/scripts/build_doc_library.py",
+                    "--only", "memo", "--registry", reg, "--created", "2026-07-13")
+        dman = reg / "_builtin" / "memo" / "manifest.json"
+        check("docx library builder registers memo", rc == 0 and dman.exists())
+
+        rc, _ = run(f"{tdir}/registry.py", "scaffold", "--builtin", "memo",
+                    "--out", tmp / "memo_content.json", "--with-examples", env=env)
+        check("registry scaffold emits a content file", rc == 0
+              and (tmp / "memo_content.json").exists())
+        # Unedited examples must FAIL the source-residue gate...
+        out_memo = tmp / "memo_unedited.docx"
+        rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "memo",
+                    "--data", tmp / "memo_content.json", "--out", out_memo, env=env)
+        rc, d = run(f"{tdir}/validate.py", out_memo, "--template",
+                    reg / "_builtin" / "memo" / "template.docx",
+                    "--manifest", dman)
+        check("unedited example fill fails the source-residue gate",
+              rc == 1 and d and d["status"] == "FAIL")
+        # ...and an edited fill must pass.
+        memo_content = json.loads((tmp / "memo_content.json").read_text(encoding="utf-8"))
+        edited = json.loads(json.dumps(memo_content)
+                            .replace("Acme Mining", "Initech")
+                            .replace("Jane Mokoena", "Pat Lee")
+                            .replace("Sipho Dlamini", "Sam Cole"))
+        (tmp / "memo_edited.json").write_text(json.dumps(edited), encoding="utf-8")
+        out_memo2 = tmp / "memo_edited.docx"
+        rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "memo",
+                    "--data", tmp / "memo_edited.json", "--out", out_memo2, env=env)
+        rc, d = run(f"{tdir}/validate.py", out_memo2, "--template",
+                    reg / "_builtin" / "memo" / "template.docx",
+                    "--manifest", dman)
+        check("edited builtin fill passes validation",
+              rc == 0 and d and d["status"] == "OK")
 
     passed = sum(1 for _, ok in results if ok)
     print(f"\n{passed}/{len(results)} checks passed")

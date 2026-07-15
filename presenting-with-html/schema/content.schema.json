@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "presenting-with-html content contract",
+  "description": "Input to scripts/build_html.py. Write ONLY this file; the builder owns the HTML shell, CSS, navigation JS, and class vocabulary. The same checks are enforced by the builder itself with actionable messages — this schema is the documentation of record. See examples/deck-content.json and examples/report-content.json for complete working inputs.",
+  "type": "object",
+  "required": ["format", "meta"],
+  "properties": {
+    "format": { "enum": ["deck", "report"], "description": "deck = full-screen slides with navigation; report = long-form scrolling document with TOC + print styles." },
+    "style": { "enum": ["boardroom", "clean"], "description": "Visual preset: boardroom = dark-first glassmorphism; clean = light-first flat corporate, print-oriented. Default boardroom. CLI --style overrides." },
+    "brand": { "type": "string", "description": "Brand pack name under brands/ or a path to a client pack kept outside the repo. CLI --brand overrides." },
+    "branding": {
+      "type": "object",
+      "description": "OPTIONAL inline branding, deep-merged over the brand pack — the low-friction path when the user hands over a logo/colors in-conversation. Every element collapses cleanly when absent (no logo -> no logo chip; no footer strings -> no footer line).",
+      "properties": {
+        "logo": { "type": "string", "description": "Path to a png/svg/jpg, relative to this content JSON (or absolute). Embedded base64 at build time." },
+        "display_name": { "type": "string" },
+        "colors": { "type": "object", "description": "Any of primary/dark/accent/accent_2/alert/ink/muted/bg/panel/hairline as hex strings. Theme token sets and chart colors re-derive automatically." },
+        "fonts": { "type": "object", "properties": { "heading": { "type": "string" }, "body": { "type": "string" } } },
+        "footer": { "type": "object", "properties": { "copyright": { "type": "string", "description": "{year}/{company} substituted" }, "confidentiality": { "type": "string" } } },
+        "company": { "type": "object", "properties": { "display_name": { "type": "string" }, "website": { "type": "string" } } }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": ["title"],
+      "description": "Drives the auto-generated title slide (deck) / hero section (report). Do not add a title block yourself.",
+      "properties": {
+        "title": { "type": "string" },
+        "title_accent": { "type": "string", "description": "Optional substring of title rendered in the gradient accent." },
+        "eyebrow": { "type": "string", "description": "Small uppercase kicker above the title, e.g. 'Executive Review · Q3 2026'." },
+        "lead": { "type": "string", "description": "One- or two-sentence framing paragraph under the title." },
+        "author": { "type": "string" },
+        "date": { "type": "string" },
+        "kpis": { "$ref": "#/$defs/kpis" }
+      }
+    },
+    "slides": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/block" }, "description": "Deck only. Body slides — the title slide is generated from meta." },
+    "sections": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/block" }, "description": "Report only. Body sections — the hero is generated from meta. Each may set 'toc' for its contents-panel label (defaults to the heading)." }
+  },
+  "$defs": {
+    "kpis": {
+      "type": "array", "minItems": 1, "maxItems": 4,
+      "items": {
+        "type": "object", "required": ["label", "value"],
+        "properties": {
+          "label": { "type": "string" }, "value": { "type": "string" },
+          "delta": { "type": "string", "description": "e.g. '▲ 9% vs Q2'" },
+          "down": { "type": "boolean", "description": "true renders the delta in the negative color." }
+        }
+      }
+    },
+    "chart": {
+      "type": "object",
+      "description": "Either the simple spec (chart_type/categories/series — converted to theme-aware Plotly that restyles on theme toggle) or a raw passthrough {plotly:{data,layout}}.",
+      "properties": {
+        "chart_type": { "enum": ["bar", "line", "area", "pie", "scatter"] },
+        "categories": { "type": "array", "items": { "type": ["string", "number"] } },
+        "series": { "type": "array", "items": { "type": "object", "required": ["name", "values"], "properties": { "name": { "type": "string" }, "values": { "type": "array", "items": { "type": "number" } } } } },
+        "stacked": { "type": "boolean" },
+        "y_title": { "type": "string" },
+        "short": { "type": "boolean", "description": "Reduced-height panel (used automatically inside two-col)." },
+        "plotly": { "type": "object", "required": ["data"], "properties": { "data": { "type": "array" }, "layout": { "type": "object" } } }
+      }
+    },
+    "sub_block": {
+      "type": "object", "required": ["type"],
+      "description": "A column inside two-col. Same shapes as the top-level blocks, no heading required.",
+      "properties": {
+        "type": { "enum": ["text", "bullets", "chart", "table", "kpi", "image"] },
+        "src": { "type": "string", "description": "image: path relative to the content JSON" },
+        "caption": { "type": "string" },
+        "alt": { "type": "string" },
+        "heading": { "type": "string" },
+        "text": { "type": "string" },
+        "paragraphs": { "type": "array", "items": { "type": "string" } },
+        "items": { "$ref": "#/$defs/bullet_items" },
+        "chart": { "$ref": "#/$defs/chart" },
+        "columns": { "type": "array", "items": { "type": "string" } },
+        "rows": { "type": "array", "items": { "type": "array" } },
+        "kpis": { "$ref": "#/$defs/kpis" }
+      }
+    },
+    "bullet_items": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "anyOf": [
+          { "type": "string" },
+          { "type": "object", "required": ["text"], "properties": { "text": { "type": "string" }, "sub": { "type": "string", "description": "Muted secondary line under the bullet." } } }
+        ]
+      }
+    },
+    "block": {
+      "type": "object", "required": ["type"],
+      "description": "One slide (deck) or one section (report). 'section' dividers are deck-only.",
+      "properties": {
+        "type": { "enum": ["section", "bullets", "kpi", "cards", "chart", "table", "two-col", "text", "quote", "timeline", "comparison", "image", "closing"] },
+        "heading": { "type": "string", "description": "Required for every type except kpi, quote, and image (optional there)." },
+        "note": { "type": "string", "description": "Muted one-liner under the heading." },
+        "toc": { "type": "string", "description": "Report only: contents-panel label." },
+        "items": { "$ref": "#/$defs/bullet_items", "description": "bullets" },
+        "kpis": { "$ref": "#/$defs/kpis", "description": "kpi" },
+        "cards": {
+          "type": "array",
+          "description": "cards / closing. 3-column grid of highlight cards.",
+          "items": { "type": "object", "required": ["heading", "text"], "properties": { "heading": { "type": "string" }, "text": { "type": "string" }, "big": { "type": ["string", "number"], "description": "Large figure at the card's foot." }, "accent": { "type": "boolean", "description": "Render 'big' in the gradient accent." } } }
+        },
+        "chart": { "$ref": "#/$defs/chart", "description": "chart" },
+        "columns": { "type": "array", "items": { "type": "string" }, "description": "table header cells" },
+        "rows": { "type": "array", "items": { "type": "array" }, "description": "table body; each row must match columns' length" },
+        "body": { "type": "string", "description": "chart/table: analysis paragraph under the visual." },
+        "left": { "description": "two-col: a sub_block ({type,...}). comparison: {title, items:[str]}." },
+        "right": { "description": "two-col: a sub_block ({type,...}). comparison: {title, items:[str]}." },
+        "paragraphs": { "type": "array", "items": { "type": "string" }, "description": "text" },
+        "quote": { "type": "string", "description": "quote: the pull-quote text" },
+        "attribution": { "type": "string", "description": "quote: who said it" },
+        "milestones": {
+          "type": "array",
+          "description": "timeline: one entry per milestone/phase, in order",
+          "items": { "type": "object", "required": ["title"], "properties": { "label": { "type": "string", "description": "small kicker, e.g. a month or phase number" }, "title": { "type": "string" }, "description": { "type": "string" }, "done": { "type": "boolean", "description": "true fills the marker (completed)" } } }
+        },
+        "src": { "type": "string", "description": "image: path to png/jpg/svg, relative to this content JSON. Embedded base64 (self-contained)." },
+        "alt": { "type": "string", "description": "image: accessibility text" },
+        "caption": { "type": "string", "description": "image: small caption under the figure" },
+        "lead": { "type": "string", "description": "closing" },
+        "eyebrow": { "type": "string", "description": "closing (defaults to 'Next steps')" }
+      }
+    }
+  }
+}
