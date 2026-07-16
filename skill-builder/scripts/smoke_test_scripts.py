@@ -325,9 +325,55 @@ def main():
               proc.returncode == 0 and (tmp / "iso_deck.html").exists()
               and "embedded" in proc.stdout)
 
-        # QA theme-forcing hook ships in the built output
-        check("built output carries the ?theme= QA hook",
-              "URLSearchParams" in built_deck.read_text(encoding="utf-8"))
+        # QA hooks ship in the built output (?theme= both formats, ?slide= deck)
+        deck_text = built_deck.read_text(encoding="utf-8")
+        check("built output carries the ?theme= QA hook", "URLSearchParams" in deck_text)
+        check("built deck carries the ?slide= QA hook", "get('slide')" in deck_text)
+
+        # scaffold emits a parseable skeleton with exact field names
+        rc, scaffold = run(f"{hdir}/build_html.py", "--scaffold", "report")
+        check("build_html --scaffold emits a valid report skeleton",
+              rc == 0 and scaffold and scaffold.get("format") == "report"
+              and isinstance(scaffold.get("sections"), list)
+              and any(b.get("type") == "kpi" for b in scaffold["sections"]))
+
+        # safe mini-markup: whitelist converts, everything else stays escaped
+        (tmp / "rich_content.json").write_text(json.dumps({
+            "format": "report", "meta": {"title": "Rich"},
+            "sections": [
+                {"type": "text", "heading": "A", "paragraphs":
+                    ["**bold** and *em* and `code` and [ok](https://x.y)"]},
+                {"type": "text", "heading": "B", "paragraphs":
+                    ["<script>alert(1)</script>", "[bad](javascript:alert(1))"]},
+            ]}), encoding="utf-8")
+        rich_out = tmp / "rich.html"
+        rc, _ = run(f"{hdir}/build_html.py", "--content", tmp / "rich_content.json",
+                    "--out", rich_out)
+        rich_html = rich_out.read_text(encoding="utf-8") if rich_out.exists() else ""
+        check("mini-markup converts the four safe patterns",
+              rc == 0 and "<strong>bold</strong>" in rich_html
+              and "<em>em</em>" in rich_html and "<code>code</code>" in rich_html
+              and '<a href="https://x.y">ok</a>' in rich_html)
+        check("mini-markup keeps raw HTML escaped and rejects unsafe URLs",
+              "&lt;script&gt;alert(1)&lt;/script&gt;" in rich_html
+              and "[bad](javascript:alert(1))" in rich_html
+              and "<script>alert(1)" not in rich_html)
+        rc, d = run(f"{hdir}/validate_html.py", rich_out)
+        check("mini-markup output passes the validator",
+              rc == 0 and d and d["status"] == "OK")
+
+        # third style preset builds and validates
+        built_exec = tmp / "built_exec.html"
+        rc, _ = run(f"{hdir}/build_html.py", "--content",
+                    ROOT / "presenting-with-html" / "examples" / "report-content.json",
+                    "--out", built_exec, "--style", "executive")
+        exec_html = built_exec.read_text(encoding="utf-8") if built_exec.exists() else ""
+        check("build_html builds the executive style preset",
+              rc == 0 and 'data-style="executive"' in exec_html
+              and 'data-theme="light"' in exec_html)
+        rc, d = run(f"{hdir}/validate_html.py", built_exec)
+        check("executive-style report passes the validator",
+              rc == 0 and d and d["status"] == "OK")
 
         print("presenting-with-html/validate_html.py (integrity hardening)")
         boilerplate = ROOT / "presenting-with-html" / "assets" / "deck-template.html"

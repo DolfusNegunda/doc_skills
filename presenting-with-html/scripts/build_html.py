@@ -100,6 +100,8 @@ STYLES = {
                   "blurb": "dark-first glassmorphism — the boardroom look"},
     "clean": {"default_theme": "light",
               "blurb": "light-first flat corporate — conservative, print-oriented"},
+    "executive": {"default_theme": "light",
+                  "blurb": "light-first editorial serif — the annual-report look"},
 }
 
 # Exact field vocabulary per block type. Anything else is rejected with a
@@ -183,6 +185,32 @@ def sub(template: str, mapping: dict) -> str:
 
 def esc(v) -> str:
     return html.escape(str(v), quote=True)
+
+
+# ---------------- Safe inline mini-markup ----------------
+# Prose fields may carry **bold**, *italic*, `code`, and [label](url). The value
+# is FULLY escaped first, then only these four patterns are converted — so the
+# only tags that can ever reach the output come from this whitelist. Unsafe URL
+# schemes (javascript: etc.) are left as visible plain text.
+
+INLINE_CODE = re.compile(r"`([^`]+)`")
+INLINE_BOLD = re.compile(r"\*\*([^*]+)\*\*")
+INLINE_EM = re.compile(r"(?<!\*)\*([^*\s][^*]*)\*(?!\*)")
+INLINE_LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
+SAFE_URL = re.compile(r"^(https?://|mailto:|#)", re.I)
+
+
+def rich(v) -> str:
+    s = esc(v)
+    s = INLINE_CODE.sub(r"<code>\1</code>", s)
+    s = INLINE_BOLD.sub(r"<strong>\1</strong>", s)
+    s = INLINE_EM.sub(r"<em>\1</em>", s)
+
+    def link(m):
+        label, url = m.group(1), m.group(2)
+        return f'<a href="{url}">{label}</a>' if SAFE_URL.match(url) else m.group(0)
+
+    return INLINE_LINK.sub(link, s)
 
 
 # ---------------- Brand pack ----------------
@@ -541,7 +569,7 @@ def cards_grid(cards: list) -> str:
             accent = " accent" if c.get("accent") else ""
             big = f'<div class="big{accent}">{esc(c["big"])}</div>'
         out.append(sub(partial("shared/card.html"),
-                       {"heading": esc(c.get("heading", "")), "text": esc(c.get("text", "")), "big": big}))
+                       {"heading": esc(c.get("heading", "")), "text": rich(c.get("text", "")), "big": big}))
     return '<div class="grid">' + "\n".join(out) + "</div>"
 
 
@@ -549,16 +577,16 @@ def bullets_list(items: list) -> str:
     lis = []
     for it in items:
         if isinstance(it, dict):
-            s = f'<div class="sub">{esc(it["sub"])}</div>' if it.get("sub") else ""
-            lis.append(f"<li>{esc(it.get('text', ''))}{s}</li>")
+            s = f'<div class="sub">{rich(it["sub"])}</div>' if it.get("sub") else ""
+            lis.append(f"<li>{rich(it.get('text', ''))}{s}</li>")
         else:
-            lis.append(f"<li>{esc(it)}</li>")
+            lis.append(f"<li>{rich(it)}</li>")
     return '<ul class="bullets">' + "\n".join(lis) + "</ul>"
 
 
 def table_html(columns: list, rows: list) -> str:
     header = "".join(f"<th>{esc(c)}</th>" for c in columns)
-    body = "\n".join("<tr>" + "".join(f"<td>{esc(v)}</td>" for v in r) + "</tr>" for r in rows)
+    body = "\n".join("<tr>" + "".join(f"<td>{rich(v)}</td>" for v in r) + "</tr>" for r in rows)
     return sub(partial("shared/table.html"), {"header_cells": header, "rows": body})
 
 
@@ -569,7 +597,7 @@ def chart_panel(spec: dict, charts: ChartBook, short: bool = False) -> str:
 
 
 def heading_html(block: dict) -> str:
-    note = f'<p class="section-note">{esc(block["note"])}</p>' if block.get("note") else ""
+    note = f'<p class="section-note">{rich(block["note"])}</p>' if block.get("note") else ""
     return sub(partial("shared/heading.html"), {"heading": esc(block.get("heading", "")), "note": note})
 
 
@@ -594,7 +622,7 @@ def timeline_html(milestones: list) -> str:
     for m in milestones:
         done = " done" if m.get("done") else ""
         label = f'<div class="tl-label">{esc(m["label"])}</div>' if m.get("label") else ""
-        body = f'<div class="tl-body">{esc(m["description"])}</div>' if m.get("description") else ""
+        body = f'<div class="tl-body">{rich(m["description"])}</div>' if m.get("description") else ""
         items.append(f'<div class="tl-item{done}">{label}'
                      f'<div class="tl-title">{esc(m["title"])}</div>{body}</div>')
     return sub(partial("shared/timeline.html"), {"items": "\n".join(items)})
@@ -602,7 +630,7 @@ def timeline_html(milestones: list) -> str:
 
 def compare_html(block: dict) -> str:
     def lis(side):
-        return "\n".join(f"<li>{esc(i)}</li>" for i in side["items"])
+        return "\n".join(f"<li>{rich(i)}</li>" for i in side["items"])
     return sub(partial("shared/compare.html"), {
         "left_title": esc(block["left"]["title"]), "left_items": lis(block["left"]),
         "right_title": esc(block["right"]["title"]), "right_items": lis(block["right"]),
@@ -613,7 +641,7 @@ def quote_html(block: dict) -> str:
     attr = (f'<div class="quote-attr">— {esc(block["attribution"])}</div>'
             if block.get("attribution") else "")
     return sub(partial("shared/quote.html"),
-               {"quote": esc(block["quote"]), "attribution": attr})
+               {"quote": rich(block["quote"]), "attribution": attr})
 
 
 def sub_block(spec: dict, charts: ChartBook, base_dir: Path) -> str:
@@ -621,7 +649,7 @@ def sub_block(spec: dict, charts: ChartBook, base_dir: Path) -> str:
     if t == "text":
         h = f"<h3>{esc(spec['heading'])}</h3>" if spec.get("heading") else ""
         paras = spec.get("paragraphs") or ([spec["text"]] if spec.get("text") else [])
-        body = "".join(f"<p>{esc(p)}</p>" for p in paras)
+        body = "".join(f"<p>{rich(p)}</p>" for p in paras)
         return f'<div class="card">{h}{body}</div>'
     if t == "bullets":
         return bullets_list(spec.get("items", []))
@@ -650,17 +678,17 @@ def block_body(block: dict, charts: ChartBook, base_dir: Path) -> str:
     elif t == "chart":
         parts.append(chart_panel(block["chart"], charts))
         if block.get("body"):
-            parts.append(f'<p class="body">{esc(block["body"])}</p>')
+            parts.append(f'<p class="body">{rich(block["body"])}</p>')
     elif t == "table":
         parts.append(table_html(block["columns"], block["rows"]))
         if block.get("body"):
-            parts.append(f'<p class="body">{esc(block["body"])}</p>')
+            parts.append(f'<p class="body">{rich(block["body"])}</p>')
     elif t == "two-col":
         left = sub_block(block["left"], charts, base_dir)
         right = sub_block(block["right"], charts, base_dir)
         parts.append(f'<div class="two-col">\n<div>{left}</div>\n<div>{right}</div>\n</div>')
     elif t == "text":
-        parts.append("".join(f'<p class="body">{esc(p)}</p>' for p in block["paragraphs"]))
+        parts.append("".join(f'<p class="body">{rich(p)}</p>' for p in block["paragraphs"]))
     elif t == "quote":
         parts.append(quote_html(block))
     elif t == "timeline":
@@ -717,7 +745,7 @@ def build_deck(doc: dict, brand: dict, style: str, base_dir: Path) -> str:
         "active": " active",
         "eyebrow": esc(meta.get("eyebrow", "")),
         "title_html": title_html_for(meta),
-        "lead": esc(meta.get("lead", "")),
+        "lead": rich(meta.get("lead", "")),
         "extras": extras,
         "footnote": f'<p class="footnote">{foot}</p>' if foot else "",
     }))
@@ -740,7 +768,7 @@ def build_deck(doc: dict, brand: dict, style: str, base_dir: Path) -> str:
                 "active": "",
                 "eyebrow": esc(block.get("eyebrow", "Next steps")),
                 "heading": esc(block["heading"]),
-                "lead": esc(block.get("lead", "")),
+                "lead": rich(block.get("lead", "")),
                 "extras": extras,
                 "footnote": f'<p class="footnote">{foot}</p>' if foot else "",
             }))
@@ -780,7 +808,7 @@ def build_report(doc: dict, brand: dict, style: str, base_dir: Path) -> str:
         "logo": hero_logo,
         "eyebrow": esc(meta.get("eyebrow", "")),
         "title_html": title_html_for(meta),
-        "lead": esc(meta.get("lead", "")),
+        "lead": rich(meta.get("lead", "")),
         "extras": extras,
         "footnote": f'<p class="footnote">{foot}</p>' if foot else "",
     }))
@@ -791,7 +819,7 @@ def build_report(doc: dict, brand: dict, style: str, base_dir: Path) -> str:
             body_parts = [f'<div class="eyebrow">{esc(block.get("eyebrow", "Next steps"))}</div>',
                           f"<h2>{esc(block['heading'])}</h2>"]
             if block.get("lead"):
-                body_parts.append(f'<p class="lead">{esc(block["lead"])}</p>')
+                body_parts.append(f'<p class="lead">{rich(block["lead"])}</p>')
             if block.get("cards"):
                 body_parts.append(cards_grid(block["cards"]))
             body = "\n".join(body_parts)
@@ -800,7 +828,8 @@ def build_report(doc: dict, brand: dict, style: str, base_dir: Path) -> str:
         sec_id = slugify(block.get("heading", t), used_ids)
         sections.append(sub(partial("report/section.html"), {
             "id": sec_id,
-            "toc": esc(block.get("toc") or block.get("heading", t)),
+            "toc": esc(block.get("toc") or block.get("heading")
+                       or t.replace("-", " ").capitalize()),
             "body": body,
         }))
 
@@ -823,6 +852,35 @@ REQUIRED_FIELDS = {
     "timeline": "heading, milestones", "comparison": "heading, left+right {title, items}",
     "image": "src", "closing": "heading",
 }
+
+
+def scaffold_doc(fmt: str) -> dict:
+    """A ready-to-edit skeleton — replace every value, delete blocks you don't
+    need, duplicate ones you need more of. Cheaper to fill than reading examples."""
+    kpi = {"label": "", "value": "", "delta": ""}
+    blocks = [
+        {"type": "bullets", "heading": "", "note": "", "items": ["", "", ""]},
+        {"type": "kpi", "heading": "", "kpis": [dict(kpi), dict(kpi), dict(kpi)]},
+        {"type": "chart", "heading": "", "note": "",
+         "chart": {"chart_type": "bar", "categories": ["", ""],
+                   "series": [{"name": "", "values": [0, 0]}]}},
+        {"type": "table", "heading": "", "columns": ["", ""], "rows": [["", ""]]},
+        {"type": "timeline", "heading": "",
+         "milestones": [{"label": "", "title": "", "description": ""}]},
+        {"type": "closing", "heading": "", "lead": "",
+         "cards": [{"heading": "", "text": ""}]},
+    ]
+    if fmt == "deck":
+        blocks.insert(0, {"type": "section", "heading": "", "note": ""})
+    else:
+        blocks.insert(0, {"type": "text", "heading": "", "paragraphs": ["", ""]})
+    return {
+        "format": fmt,
+        "style": "boardroom",
+        "meta": {"title": "", "title_accent": "", "eyebrow": "", "lead": "",
+                 "author": "", "date": "", "kpis": [dict(kpi), dict(kpi), dict(kpi)]},
+        ("slides" if fmt == "deck" else "sections"): blocks,
+    }
 
 
 def missing_assets() -> list[str]:
@@ -875,11 +933,24 @@ def main() -> None:
                     help="Fold the Plotly library into the file (self-contained delivery)")
     ap.add_argument("--validate-only", action="store_true",
                     help="Check the content JSON (fields, types, chart specs) without building")
+    ap.add_argument("--scaffold", choices=("deck", "report"),
+                    help="Emit a skeleton content JSON to edit (with --out, writes the file)")
     ap.add_argument("--list", action="store_true", help="Show formats, block types, and brands")
     args = ap.parse_args()
 
     if args.list:
         list_catalog()
+        return
+    if args.scaffold:
+        text = json.dumps(scaffold_doc(args.scaffold), indent=2, ensure_ascii=False)
+        if args.out:
+            Path(args.out).write_text(text + "\n", encoding="utf-8")
+            print(f"Scaffold written to {args.out} — fill every value, delete unused blocks, "
+                  "duplicate blocks you need more of (--list shows all types). Prose fields "
+                  "accept **bold**, *italic*, `code`, [label](https://url). Then check with "
+                  f"--content {args.out} --validate-only.")
+        else:
+            print(text)
         return
     if not args.content or (not args.out and not args.validate_only):
         ap.error("--content and --out are required (or --validate-only / --list)")

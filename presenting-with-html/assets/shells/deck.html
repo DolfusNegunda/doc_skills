@@ -184,6 +184,10 @@
   @media (prefers-reduced-motion: reduce){
     * { transition:none !important; animation:none !important; }
   }
+  /* inline rich text (builder mini-markup: **bold**, *italic*, `code`, [link](url)) */
+  p a, li a, .card a, td a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; }
+  code { font-family:ui-monospace,Consolas,monospace; font-size:.88em;
+         background:rgba(127,127,127,.16); padding:1px 6px; border-radius:5px; }
 {{ style_css }}</style>
 </head>
 <body>
@@ -295,7 +299,13 @@
 
   /* ---- Init ---- */
   buildDots();
-  showSlide(0);
+  let startSlide = 0;
+  /* QA hook: ?slide=N (1-based) opens on slide N for headless screenshots */
+  try {
+    const s = parseInt(new URLSearchParams(location.search).get('slide'), 10);
+    if (s >= 1 && s <= slides.length) startSlide = s - 1;
+  } catch (e) {}
+  showSlide(startSlide);
 })();
 </script>
 </body>
