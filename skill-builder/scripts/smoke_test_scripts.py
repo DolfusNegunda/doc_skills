@@ -553,6 +553,61 @@ def main():
                     "--data", tmp / "sg_missing.json", "--out", tmp / "sg_missing.pptx", env=env)
         check("missing required slide group fails the fill", rc != 0)
 
+        # flex_deck: composable typed body — any mix/order, native charts+tables,
+        # item-row cloning, placeholder-visual gate.
+        rc, _ = run("building-powerpoint-decks/scripts/build_template_library.py",
+                    "--only", "flex_deck", "--registry", reg, "--created", "2026-07-16")
+        fman = reg / "_builtin" / "flex_deck" / "manifest.json"
+        check("library builder registers flex_deck (composable body)", rc == 0 and fman.exists())
+        rc, _ = run(f"{tdir}/registry.py", "scaffold", "--builtin", "flex_deck",
+                    "--out", tmp / "flex_scaffold.json", "--with-examples", env=env)
+        fs = json.loads((tmp / "flex_scaffold.json").read_text(encoding="utf-8"))
+        check("flex scaffold emits an ordered typed body list",
+              rc == 0 and isinstance(fs.get("body"), list) and
+              all("type" in e for e in fs["body"]))
+        flex_data = {
+            "deck_eyebrow": "REVIEW", "deck_title": "Initech Q3", "deck_subtitle": "Sub.",
+            "author_line": "Ops", "closing_statement": "Approve the plan",
+            "next_steps": ["Step one — owner TBC"],
+            "body": [
+                {"type": "agenda", "heading": "Cover",
+                 "items": [{"title": "One", "text": "A"}, {"title": "Two"}]},
+                {"type": "chart", "heading": "Grew",
+                 "chart": {"chart_type": "column", "categories": ["A", "B"],
+                           "series": [{"name": "S", "values": [1, 2]}]}},
+                {"type": "table", "heading": "Costs",
+                 "table": {"columns": ["Site", "Cost"], "rows": [["X", "1"], ["Y", "2"]]}},
+                {"type": "team", "heading": "Owners",
+                 "items": [{"initials": "AB", "name": "Alpha", "role": "Lead"}]},
+                {"type": "quote", "quote": "It works."},
+            ],
+        }
+        (tmp / "flex_data.json").write_text(json.dumps(flex_data), encoding="utf-8")
+        out_flex = tmp / "flex.pptx"
+        rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "flex_deck",
+                    "--data", tmp / "flex_data.json", "--out", out_flex, env=env)
+        rc2, d = run(f"{tdir}/validate.py", out_flex, "--template",
+                     reg / "_builtin" / "flex_deck" / "template.pptx", "--manifest", fman)
+        flex_names = zipfile.ZipFile(out_flex).namelist()
+        check("flex body fills 5 typed slides + native chart + table, validates",
+              rc == 0 and rc2 == 0 and d and d["status"] == "OK"
+              and d["checks"]["n_slides"] == 7          # cover + 5 body + closing
+              and not d["checks"]["placeholder_visuals"]
+              and any(n.startswith("ppt/charts/chart") for n in flex_names))
+        # unswapped placeholder visual must FAIL validation (warehouse-audit bug)
+        rc, d = run(f"{tdir}/validate.py", reg / "_builtin" / "flex_deck" / "template.pptx",
+                    "--template", reg / "_builtin" / "flex_deck" / "template.pptx",
+                    "--manifest", fman)
+        check("placeholder visual left in a deck fails validation",
+              rc == 1 and d and d["checks"].get("placeholder_visuals"))
+        # image body entry without a file -> fill refuses
+        bad = dict(flex_data)
+        bad["body"] = [{"type": "image", "heading": "Pic", "caption": "c"}]
+        (tmp / "flex_bad.json").write_text(json.dumps(bad), encoding="utf-8")
+        rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "flex_deck",
+                    "--data", tmp / "flex_bad.json", "--out", tmp / "flex_bad.pptx", env=env)
+        check("image body slide without an image fails the fill", rc != 0)
+
         rc, _ = run(f"{tdir}/registry.py", "scaffold", "--builtin", "memo",
                     "--out", tmp / "memo_content.json", "--with-examples", env=env)
         check("registry scaffold emits a content file", rc == 0

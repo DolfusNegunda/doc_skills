@@ -71,7 +71,8 @@ def docx_report(path: Path, template: Path | None, source_terms):
     return errors, checks
 
 
-def pptx_report(path: Path, template: Path | None, source_terms, slide_groups=None):
+def pptx_report(path: Path, template: Path | None, source_terms, slide_groups=None,
+                body=None, placeholder_sha1=None):
     from pptx import Presentation
     prs = Presentation(str(path))
     texts = [C.para_text(p) for p in C.iter_pptx_paragraphs(prs)]
@@ -92,22 +93,48 @@ def pptx_report(path: Path, template: Path | None, source_terms, slide_groups=No
     # Informational: SmartArt/chart text the fill can't touch — QA must eyeball these.
     checks["unsupported_objects"] = [f"{u['kind']}:{u['part']}" for u in C.iter_unsupported_objects(path)]
 
+    # An image slot that was never swapped must not ship: the manifest carries the
+    # sha1 of the template's placeholder visual; any media part matching it means a
+    # slide still shows the "SAMPLE VISUAL" art.
+    if placeholder_sha1:
+        import hashlib
+        import zipfile
+        stale = []
+        with zipfile.ZipFile(path) as z:
+            for n in z.namelist():
+                if n.startswith("ppt/media/") and \
+                        hashlib.sha1(z.read(n)).hexdigest() in placeholder_sha1:
+                    stale.append(n)
+        checks["placeholder_visuals"] = stale
+        if stale:
+            errors.append(f"{len(stale)} placeholder visual(s) still in the deck — an "
+                          "image slot was never swapped. Supply a real image for every "
+                          "image/evidence entry, or remove those entries.")
+
     if template and template.exists():
         tprs = Presentation(str(template))
         t_slides = len(tprs.slides)
         groups = slide_groups or []
+        lo = hi = t_slides
         if groups:
             # Repeatable/optional slides: each group's ONE template slide may
             # legitimately become min..max slides in the output.
-            lo = t_slides + sum(g.get("min", 1) - 1 for g in groups)
-            hi = t_slides + sum((g.get("max") or 99) - 1 for g in groups)
+            lo += sum(g.get("min", 1) - 1 for g in groups)
+            hi += sum((g.get("max") or 99) - 1 for g in groups)
+        if body:
+            # Composable body: the N type-source slides are replaced by min..max
+            # cloned body slides picked from those types.
+            n_types = len(body.get("types", {}))
+            lo += body.get("min", 1) - n_types
+            hi += (body.get("max") or 99) - n_types
+        if groups or body:
             checks["expected_slides"] = f"{lo}-{hi}"
             if not (lo <= checks["n_slides"] <= hi):
                 errors.append(f"Slide count {checks['n_slides']} outside the template's "
-                              f"expected range {lo}-{hi} (base {t_slides} + slide_groups).")
+                              f"expected range {lo}-{hi} (base {t_slides} + slide_groups/body).")
         elif checks["n_slides"] != t_slides:
             errors.append(f"Slide count changed: template {t_slides} -> output {checks['n_slides']} "
-                          "(if this template has repeatable slide_groups, pass --manifest).")
+                          "(if this template has repeatable slide_groups or a body, pass --manifest).")
     elif template:
         errors.append(f"--template not found: {template} (structure check could not run)")
     return errors, checks
@@ -129,19 +156,22 @@ def main():
     template = Path(args.template) if args.template else None
     fmt = C.detect_format(path)
 
-    # Source-residue terms + slide_groups: from --manifest and/or --source-terms.
-    source_terms, slide_groups = [], []
+    # Source-residue terms + slide_groups/body/placeholder hashes: from --manifest.
+    source_terms, slide_groups, body, placeholder_sha1 = [], [], None, []
     if args.manifest and Path(args.manifest).exists():
         man = C.load_manifest(Path(args.manifest))
         source_terms += man.get("source_terms", [])
         slide_groups = man.get("slide_groups", [])
+        body = man.get("body")
+        placeholder_sha1 = man.get("placeholder_media_sha1", [])
     if args.source_terms:
         source_terms += [t.strip() for t in args.source_terms.split(",") if t.strip()]
 
     if fmt == "docx":
         errors, checks = docx_report(path, template, source_terms)
     else:
-        errors, checks = pptx_report(path, template, source_terms, slide_groups)
+        errors, checks = pptx_report(path, template, source_terms, slide_groups,
+                                     body, placeholder_sha1)
     report = {
         "file": str(path),
         "format": fmt,

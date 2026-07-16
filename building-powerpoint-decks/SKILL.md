@@ -18,12 +18,19 @@ built on masters so it can be restyled or extended without manual cleanup.
 
 ## Step 0 — Fill a built-in template before you build (decision gate)
 The suite ships fill-ready deck templates in the document-template registry:
-`exec_update`, `project_kickoff`, `proposal`, `report_out` — clean, brand-pack-driven,
-**expandable** decks built by `build_template_library.py` (repeatable topic/finding/
-evidence slides via slide groups; see below).
 
-If the requested deck matches one of these, **do not author slides at all**; run the
-deterministic fill path (safe for any model, however small):
+- **`flex_deck`** — the universal composable deck. Its `body` is an ORDERED list of
+  typed entries (agenda, bullets, numbered steps, stat cards, two-col, team, timeline,
+  native **chart** from data, native **table**, image evidence, quote, section divider)
+  in ANY mix and order — the scaffold prints the full type menu. Charts/tables are real
+  editable PowerPoint objects built from the entry's data, styled from the brand pack.
+  Prefer this whenever the content wants varied visuals or a custom slide sequence.
+- **`exec_update`, `project_kickoff`, `proposal`, `report_out`** — fixed-shape decks
+  for their standard narratives, with repeatable topic/finding/evidence slide groups.
+
+All are brand-pack-driven and built by `build_template_library.py`. If the requested
+deck matches any of these, **do not author slides at all**; run the deterministic fill
+path (safe for any model, however small):
 
 ```bash
 cd ../building-document-templates

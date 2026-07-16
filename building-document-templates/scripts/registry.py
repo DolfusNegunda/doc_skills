@@ -181,6 +181,29 @@ def cmd_scaffold(args):
                 item[f["name"]] = [] if ftype == "list" else ""
         content[g["name"]] = [item]
 
+    body = manifest.get("body")
+    if body:
+        def _body_entry(tname, tdef):
+            e = {"type": tname}
+            for f in tdef.get("fields", []):
+                ftype = f.get("type", "text")
+                ex = f.get("example")
+                if args.with_examples and ex not in ("", None):
+                    e[f["name"]] = [ex] if ftype == "list" else ex
+                else:
+                    e[f["name"]] = ([] if ftype == "list"
+                                    else {} if ftype in ("chart", "table") else "")
+            items = tdef.get("items")
+            if items:
+                row = {}
+                for sf in items.get("subfields", []):
+                    row[sf["name"]] = sf.get("example", "") if args.with_examples else ""
+                e[items.get("field", "items")] = [row]
+            return e
+        # Scaffold a small representative body; ANY mix/order/count is allowed.
+        picks = list(body["types"])[:3]
+        content["body"] = [_body_entry(t, body["types"][t]) for t in picks]
+
     out = args.out
     from pathlib import Path
     Path(out).parent.mkdir(parents=True, exist_ok=True)
@@ -203,6 +226,23 @@ def cmd_scaffold(args):
         for f in g["fields"]:
             req = "" if f.get("required", True) else "  [optional]"
             print(f"      .{f['name']:22} {f.get('type', 'text'):6}{req}  {f.get('guidance', '')}")
+    if body:
+        mn, mx = body.get("min", 1), body.get("max")
+        print(f"\nBody ({mn}–{mx or '∞'} slides): \"body\" is an ORDERED list of typed entries — "
+              "one entry per slide, ANY mix and order of these types. The scaffold shows "
+              "3 example entries; add/remove/reorder freely:")
+        for tname, tdef in body["types"].items():
+            print(f"  {{\"type\": \"{tname}\"}}".ljust(28) + f"  {tdef.get('purpose', '')}")
+            for f in tdef.get("fields", []):
+                req = "" if f.get("required", True) else "  [optional]"
+                print(f"      .{f['name']:22} {f.get('type', 'text'):6}{req}  {f.get('guidance', '')}")
+            items = tdef.get("items")
+            if items:
+                mx_i = items.get("max")
+                subs = ", ".join(sf["name"] + ("" if sf.get("required", True) else "?")
+                                 for sf in items.get("subfields", []))
+                print(f"      .{items.get('field', 'items'):22} rows    one object per row "
+                      f"(max {mx_i}); keys: {subs}")
     if manifest.get("slides"):
         groups_by_name = {g["name"]: g for g in manifest.get("slide_groups", [])}
         print("\nSlide guide (what each slide is for):")

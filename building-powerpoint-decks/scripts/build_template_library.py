@@ -424,7 +424,7 @@ def build_exec_update(prs, st, png):
          "purpose": "Evidence visuals — one chart image per slide. Omit the key (or pass []) for no visual slides at all.",
          "fields": [
              F("evidence_heading", "Revenue tracked above target from August", "Assertion headline — state the takeaway, not the chart type."),
-             F("evidence_visual", "", "PNG/JPG path for this slide's chart (e.g. exported from Plotly/matplotlib at 2x). Swapped preserving geometry; omit to keep the placeholder.", type="image", required=False),
+             F("evidence_visual", "", "PNG/JPG path for this slide's image. REQUIRED: only add an evidence entry when you HAVE the file — a slide shipped with the placeholder visual fails validation.", type="image"),
              F("evidence_caption", "Monthly revenue vs plan, $m. Source: finance close, Oct 2026.", "Small caption under the visual: units + source."),
          ]},
         {"name": "topic_slides", "slide_index": 4, "min": 1, "max": 6,
@@ -580,7 +580,7 @@ def build_report_out(prs, st, png):
          "purpose": "Evidence visuals — one chart image per slide. Omit the key (or pass []) for no visual slides.",
          "fields": [
              F("evidence_heading", "Cost per tonne by scenario", "Assertion headline for this visual."),
-             F("evidence_visual", "", "PNG/JPG path for this slide's chart. Swapped preserving geometry; omit to keep the placeholder.", type="image", required=False),
+             F("evidence_visual", "", "PNG/JPG path for this slide's image. REQUIRED: only add an evidence entry when you HAVE the file — a slide shipped with the placeholder visual fails validation.", type="image"),
              F("evidence_caption", "Simulated cost per tonne, 12-month horizon. Source: study model v2.1.", "Caption: units + source."),
          ]},
     ]
@@ -598,8 +598,340 @@ def build_report_out(prs, st, png):
     return {"fields": fields, "slide_groups": slide_groups, "slides": slides}
 
 
+# ---------------- flex_deck: composable body slides (Rev Sci-style motifs) ----------------
+# The whole middle of the deck is a typed, ordered "body" list: the fill engine
+# clones one designed source slide per entry (any mix, any order) and deletes the
+# unused sources. Item rows inside a slide are cloned shape GROUPS (circle rows,
+# chevrons, stat cards, timeline nodes) — entry count = row count, colors walk a
+# brand ramp. No fixed decorative image anywhere; logo/footer come from the brand pack.
+
+def _mix(c1, c2, t):
+    return RGBColor(*(round(a + (b - a) * t) for a, b in zip(c1, c2)))
+
+
+def _ramp(st, n=6):
+    """Brand color ramp for numbered/row motifs (dark -> primary -> accent -> tint)."""
+    stops = [st.dark, st.accent, st.accent2, _mix(st.accent2, RGBColor(0xFF, 0xFF, 0xFF), 0.45)]
+    out = []
+    for i in range(n):
+        pos = i * (len(stops) - 1) / (n - 1)
+        lo = min(int(pos), len(stops) - 2)
+        out.append(_mix(stops[lo], stops[lo + 1], pos - lo))
+    return out
+
+
+def _grp(slide):
+    g = slide.shapes.add_group_shape()
+    return g
+
+
+def _item_spec(field, shape, *, dx=0, dy=0, mx=5, ramp=None, subfields=(),
+               center=False):
+    spec = {"field": field, "shape": shape, "dx": int(dx), "dy": int(dy), "max": mx,
+            "subfields": list(subfields)}
+    if ramp:
+        spec["ramp"] = [str(c) for c in ramp]
+    if center:
+        spec.update(center=True, span=int(CONTENT_W), span_left=int(MARGIN))
+    return spec
+
+
+def _sub(name, example, guidance, *, required=True):
+    return {"name": name, "example": example, "guidance": guidance, "required": required}
+
+
+def flex_agenda_slide(prs, st, ramp):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    g = _grp(s)
+    g.name = "ITEM"
+    y = Inches(2.45)
+    d = Inches(0.62)
+    circle = g.shapes.add_shape(MSO_SHAPE.OVAL, int(MARGIN), int(y), int(d), int(d))
+    circle.fill.solid(); circle.fill.fore_color.rgb = ramp[0]
+    circle.line.fill.background(); circle.shadow.inherit = False
+    tf = circle.text_frame; tf.word_wrap = False
+    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
+    r = p.add_run(); r.text = tag("item._n")
+    r.font.size, r.font.bold, r.font.name = Pt(18), True, st.font
+    r.font.color.rgb = rgb("#FFFFFF")
+    tx = MARGIN + d + Inches(0.35)
+    _txt(g, st, tx, y - Inches(0.02), CONTENT_W - d - Inches(0.35), Inches(0.4),
+         tag("item.title"), 17, bold=True)
+    _txt(g, st, tx, y + Inches(0.32), CONTENT_W - d - Inches(0.35), Inches(0.35),
+         tag("item.text"), 12.5, color=st.muted)
+    _footer(s, st)
+    return s
+
+
+def flex_numbered_slide(prs, st, ramp):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    g = _grp(s)
+    g.name = "ITEM"
+    y = Inches(2.45)
+    ch_w, ch_h = Inches(0.85), Inches(0.7)
+    chev = g.shapes.add_shape(MSO_SHAPE.CHEVRON, int(MARGIN), int(y), int(ch_w), int(ch_h))
+    chev.fill.solid(); chev.fill.fore_color.rgb = ramp[0]
+    chev.line.fill.background(); chev.shadow.inherit = False
+    tf = chev.text_frame
+    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
+    r = p.add_run(); r.text = tag("item._n")
+    r.font.size, r.font.bold, r.font.name = Pt(16), True, st.font
+    r.font.color.rgb = rgb("#FFFFFF")
+    tx = MARGIN + ch_w + Inches(0.35)
+    _txt(g, st, tx, y - Inches(0.02), CONTENT_W - ch_w - Inches(0.35), Inches(0.4),
+         tag("item.title"), 16.5, bold=True)
+    _txt(g, st, tx, y + Inches(0.34), CONTENT_W - ch_w - Inches(0.35), Inches(0.35),
+         tag("item.text"), 12.5, color=st.muted)
+    _footer(s, st)
+    return s
+
+
+def flex_stats_slide(prs, st, ramp):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    g = _grp(s)
+    g.name = "ITEM"
+    w, h = Inches(2.75), Inches(2.5)
+    x, y = MARGIN, Inches(2.9)
+    card = g.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, int(x), int(y), int(w), int(h))
+    card.fill.solid(); card.fill.fore_color.rgb = st.panel
+    card.line.fill.background(); card.shadow.inherit = False
+    strip = g.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, int(x + Inches(0.25)),
+                               int(y + Inches(0.25)), int(Inches(0.6)), int(Inches(0.12)))
+    strip.fill.solid(); strip.fill.fore_color.rgb = ramp[0]
+    strip.line.fill.background(); strip.shadow.inherit = False
+    pad = Inches(0.25)
+    _txt(g, st, x + pad, y + Inches(0.55), w - 2 * pad, Inches(0.4), tag("item.label"),
+         12, color=st.muted, bold=True)
+    _txt(g, st, x + pad, y + Inches(1.0), w - 2 * pad, Inches(0.8), tag("item.value"),
+         28, bold=True)
+    _txt(g, st, x + pad, y + Inches(1.9), w - 2 * pad, Inches(0.45), tag("item.note"),
+         12.5, color=st.accent)
+    _footer(s, st)
+    return s
+
+
+def flex_team_slide(prs, st, ramp):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    g = _grp(s)
+    g.name = "ITEM"
+    y = Inches(2.4)
+    d = Inches(0.72)
+    circle = g.shapes.add_shape(MSO_SHAPE.OVAL, int(MARGIN), int(y), int(d), int(d))
+    circle.fill.solid(); circle.fill.fore_color.rgb = ramp[0]
+    circle.line.fill.background(); circle.shadow.inherit = False
+    tf = circle.text_frame
+    tf.word_wrap = False
+    tf.margin_left = tf.margin_right = 0
+    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
+    r = p.add_run(); r.text = tag("item.initials")
+    r.font.size, r.font.bold, r.font.name = Pt(15), True, st.font
+    r.font.color.rgb = rgb("#FFFFFF")
+    tx = MARGIN + d + Inches(0.35)
+    _txt(g, st, tx, y, Inches(4.6), Inches(0.4), tag("item.name"), 16, bold=True)
+    _txt(g, st, tx, y + Inches(0.38), Inches(4.6), Inches(0.35), tag("item.role"),
+         12.5, color=st.accent, bold=True)
+    _txt(g, st, MARGIN + Inches(6.2), y + Inches(0.1), CONTENT_W - Inches(6.2),
+         Inches(0.6), tag("item.note"), 12.5, color=st.muted)
+    _footer(s, st)
+    return s
+
+
+def flex_timeline_slide(prs, st, ramp):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    _rect(s, MARGIN, Inches(4.04), CONTENT_W, Inches(0.03), st.hair)
+    g = _grp(s)
+    g.name = "ITEM"
+    x = MARGIN
+    d = Inches(0.34)
+    dot = g.shapes.add_shape(MSO_SHAPE.OVAL, int(x + Inches(0.9)), int(Inches(3.9)),
+                             int(d), int(d))
+    dot.fill.solid(); dot.fill.fore_color.rgb = ramp[0]
+    dot.line.color.rgb = rgb("#FFFFFF"); dot.line.width = Pt(2)
+    dot.shadow.inherit = False
+    _txt(g, st, x, Inches(2.95), Inches(2.15), Inches(0.4), tag("item.label"), 14,
+         bold=True, align=PP_ALIGN.CENTER)
+    _txt(g, st, x, Inches(3.42), Inches(2.15), Inches(0.35), tag("item.date"), 12,
+         color=st.accent, bold=True, align=PP_ALIGN.CENTER)
+    _txt(g, st, x, Inches(4.5), Inches(2.15), Inches(1.5), tag("item.text"), 11.5,
+         color=st.muted, align=PP_ALIGN.CENTER)
+    _footer(s, st)
+    return s
+
+
+def flex_chart_slide(prs, st):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    slot = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, int(MARGIN), int(Inches(2.5)),
+                              int(CONTENT_W), int(Inches(3.9)))
+    slot.name = "CHART_SLOT"
+    slot.fill.solid(); slot.fill.fore_color.rgb = st.panel
+    slot.line.color.rgb = st.hair; slot.shadow.inherit = False
+    tfp = slot.text_frame.paragraphs[0]
+    r = tfp.add_run(); r.text = "Native chart renders here (fill.py builds it from the entry's data)"
+    r.font.size, r.font.name, r.font.color.rgb = Pt(12), st.font, st.muted
+    _txt(s, st, MARGIN, Inches(6.55), CONTENT_W, Inches(0.45), tag("takeaway"), 13,
+         color=st.accent, bold=True)
+    _footer(s, st)
+    return s
+
+
+def flex_table_slide(prs, st):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    slot = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, int(MARGIN), int(Inches(2.5)),
+                              int(CONTENT_W), int(Inches(3.9)))
+    slot.name = "TABLE_SLOT"
+    slot.fill.solid(); slot.fill.fore_color.rgb = st.panel
+    slot.line.color.rgb = st.hair; slot.shadow.inherit = False
+    tfp = slot.text_frame.paragraphs[0]
+    r = tfp.add_run(); r.text = "Native table renders here (fill.py builds it from the entry's columns/rows)"
+    r.font.size, r.font.name, r.font.color.rgb = Pt(12), st.font, st.muted
+    _txt(s, st, MARGIN, Inches(6.55), CONTENT_W, Inches(0.45), tag("note"), 12,
+         color=st.muted)
+    _footer(s, st)
+    return s
+
+
+def flex_quote_slide(prs, st):
+    s = _slide(prs, st, dark=True)
+    _rect(s, 0, 0, Inches(0.28), SH, st.accent)
+    _txt(s, st, MARGIN, Inches(1.6), Inches(1.2), Inches(1.4), "“", 110,
+         color=st.accent2, bold=True)
+    _txt(s, st, MARGIN + Inches(0.1), Inches(2.7), CONTENT_W - Inches(0.4), Inches(2.4),
+         tag("quote"), 28, color=st.bg, spacing=1.25)
+    _txt(s, st, MARGIN + Inches(0.1), Inches(5.6), CONTENT_W, Inches(0.5),
+         tag("attribution"), 15, color=st.light)
+    _footer(s, st, dark=True)
+    return s
+
+
+def build_flex_deck(prs, st, png):
+    ramp = _ramp(st)
+    ramp_hex = ["#" + str(c) for c in ramp]
+
+    title_slide(prs, st, tag("deck_eyebrow"), tag("deck_title"),
+                tag("deck_subtitle"), tag("author_line"))                       # 0
+    flex_agenda_slide(prs, st, ramp)                                            # 1  agenda
+    bullets_slide(prs, st, tag("heading"), tag("points"), intro=tag("intro"))   # 2  bullets
+    flex_numbered_slide(prs, st, ramp)                                          # 3  numbered
+    flex_stats_slide(prs, st, ramp)                                             # 4  stats
+    two_list_slide(prs, st, tag("heading"), tag("left_label"), tag("left_items"),
+                   tag("right_label"), tag("right_items"))                      # 5  two_col
+    flex_team_slide(prs, st, ramp)                                              # 6  team
+    flex_timeline_slide(prs, st, ramp)                                          # 7  timeline
+    flex_chart_slide(prs, st)                                                   # 8  chart
+    flex_table_slide(prs, st)                                                   # 9  table
+    visual_slide(prs, st, tag("heading"), tag("caption"), png)                  # 10 image
+    flex_quote_slide(prs, st)                                                   # 11 quote
+    divider_slide(prs, st, tag("marker"), tag("heading"), tag("note"))          # 12 section
+    closing_slide(prs, st, "CLOSING", tag("closing_statement"), tag("next_steps"))  # 13
+
+    fields = [
+        F("deck_eyebrow", "OPERATIONS REVIEW · Q3 2026", "Small uppercase kicker on the cover: deck kind + period."),
+        F("deck_title", "Q3 2026 Operations Review", "The deck title. Keep under ~8 words."),
+        F("deck_subtitle", "What moved, what's at risk, and the decisions we need.", "One-sentence framing under the title."),
+        F("author_line", "Prepared by Operations · 15 October 2026", "Author/team and date."),
+        F("closing_statement", "Approve the Q4 operations plan", "The single closing ask, one sentence."),
+        F("next_steps", "Confirm peak-season staffing plan — owner TBC — by 31 October", "3–5 closing bullets with owners/dates ONLY if the user supplied them.", type="list"),
+    ]
+
+    H = lambda ex: F("heading", ex, "This slide's headline — state the takeaway, not the topic.")
+    body_types = {
+        "agenda": {"slide_index": 1, "purpose": "Numbered agenda/overview rows (2–5).",
+                   "fields": [H("What we'll cover")],
+                   "items": _item_spec("items", "ITEM", dy=Inches(0.98), mx=5, ramp=ramp_hex,
+                                       subfields=[_sub("title", "Financial performance", "Row title (3–6 words)."),
+                                                  _sub("text", "Revenue, margin, and the fuel-cost squeeze", "One-line description.", required=False)])},
+        "bullets": {"slide_index": 2, "purpose": "Classic message slide: headline + 3–6 bullets (+ optional intro line).",
+                    "fields": [H("On-time delivery is approaching target"),
+                               F("intro", "", "Optional one-line setup above the bullets.", required=False),
+                               F("points", "94.1% on-time, 0.9 points below the 95% target", "3–6 bullets, one message each.", type="list")]},
+        "numbered": {"slide_index": 3, "purpose": "Sequential steps/priorities as chevron rows (2–5).",
+                     "fields": [H("How we get to launch")],
+                     "items": _item_spec("items", "ITEM", dy=Inches(0.95), mx=5, ramp=ramp_hex,
+                                         subfields=[_sub("title", "Complete discovery", "Step title."),
+                                                    _sub("text", "Data audit and stakeholder interviews, weeks 1–2", "One-line detail.", required=False)])},
+        "stats": {"slide_index": 4, "purpose": "2–4 KPI stat cards.",
+                  "fields": [H("The quarter at a glance")],
+                  "items": _item_spec("items", "ITEM", dx=Inches(3.05), mx=4, ramp=ramp_hex, center=True,
+                                      subfields=[_sub("label", "REVENUE", "Short uppercase label."),
+                                                 _sub("value", "$48.2M", "The big number."),
+                                                 _sub("note", "+6% QoQ", "Movement/context line.", required=False)])},
+        "two_col": {"slide_index": 5, "purpose": "Two labelled columns (risks/mitigations, before/after, pros/cons).",
+                    "fields": [H("Top risks and how we contain them"),
+                               F("left_label", "RISKS", "Left column label (uppercase)."),
+                               F("left_items", "Key-person dependency on night shift", "3–5 left bullets.", type="list"),
+                               F("right_label", "MITIGATIONS", "Right column label (uppercase)."),
+                               F("right_items", "Cross-training rotation from November", "One right bullet per left bullet.", type="list")]},
+        "team": {"slide_index": 6, "purpose": "Team/owner rows (2–5): initials avatar, name, role, note.",
+                 "fields": [H("Who is in the room")],
+                 "items": _item_spec("items", "ITEM", dy=Inches(0.95), mx=5, ramp=ramp_hex,
+                                     subfields=[_sub("initials", "JM", "1–3 letter initials for the avatar circle.", required=False),
+                                                _sub("name", "Jane Mokoena", "Person or team name."),
+                                                _sub("role", "Engagement Lead", "Role/responsibility."),
+                                                _sub("note", "Decision owner for scope changes", "Optional context.", required=False)])},
+        "timeline": {"slide_index": 7, "purpose": "Horizontal milestones (2–5): label, date, note.",
+                     "fields": [H("The road to cutover")],
+                     "items": _item_spec("items", "ITEM", dx=Inches(2.35), mx=5, ramp=ramp_hex, center=True,
+                                         subfields=[_sub("label", "Pilot live", "Milestone name."),
+                                                    _sub("date", "End September", "Timing."),
+                                                    _sub("text", "First depot on the new app", "Optional one-liner.", required=False)])},
+        "chart": {"slide_index": 8, "purpose": "Native editable chart built from data (column/bar/line/pie/area/doughnut).",
+                  "fields": [H("Throughput grew every month"),
+                             F("chart", {"chart_type": "column", "categories": ["Jul", "Aug", "Sep"],
+                                         "series": [{"name": "Actual", "values": [82, 91, 103]}]},
+                               'Chart spec: {"chart_type", "categories", "series":[{"name","values"}]}. Values numeric, one per category.', type="chart"),
+                             F("takeaway", "Sept exceeded plan by 8% — capacity holds through peak", "One-line takeaway under the chart.", required=False)]},
+        "table": {"slide_index": 9, "purpose": "Native table from columns/rows.",
+                  "fields": [H("Cost per order by site"),
+                             F("table", {"columns": ["Site", "Cost/order", "Trend"],
+                                         "rows": [["Columbus", "$2.41", "▼ 3%"]]},
+                               'Table spec: {"columns": [...], "rows": [[...], ...]} — every row matches columns length.', type="table"),
+                             F("note", "Source: finance close, Oct 2026.", "Optional source/footnote.", required=False)]},
+        "image": {"slide_index": 10, "purpose": "Full-width image with caption — REQUIRES an image path; omit this slide if you have no image.",
+                  "fields": [H("The loading bay at shift change"),
+                             F("image", "", "PNG/JPG path. REQUIRED — never ship this slide without a real image.", type="image"),
+                             F("caption", "Source: site walkthrough, July 2026.", "Small caption: what it shows + source.")]},
+        "quote": {"slide_index": 11, "purpose": "Big statement/quote on a dark slide.",
+                  "fields": [F("quote", "This quarter proved the network can absorb peak volume without adding sites.", "The statement (1–2 sentences)."),
+                             F("attribution", "Chief Operating Officer, September review", "Who said it / where it's from.", required=False)]},
+        "section": {"slide_index": 12, "purpose": "Dark chapter divider.",
+                    "fields": [F("marker", "01", "Big marker, e.g. 01 / 02 / A."),
+                               H("What the audit showed"),
+                               F("note", "Three findings drive the recommendations.", "One muted line under the heading.", required=False)]},
+    }
+    body = {
+        "anchor_index": 0,
+        "min": 1, "max": 16,
+        "chart_style": {"colors": ramp_hex, "font": st.font,
+                        "table_head": "#" + str(st.dark), "table_band": "#" + str(st.panel),
+                        "ink": "#" + str(st.ink)},
+        "types": body_types,
+    }
+    slides = [
+        {"index": 0, "name": "Cover", "purpose": "Eyebrow, title, subtitle, author line."},
+        *[{"index": d["slide_index"], "name": t, "body_type": t, "purpose": d["purpose"]}
+          for t, d in sorted(body_types.items(), key=lambda kv: kv[1]["slide_index"])],
+        {"index": 13, "name": "Closing", "purpose": "Single ask + next steps."},
+    ]
+    return {"fields": fields, "slide_groups": [], "slides": slides, "body": body}
+
+
 TEMPLATES = {
     "exec_update": (build_exec_update, "Executive/quarterly business update (QBR): KPIs, evidence, highlights, risks, decisions."),
+    "flex_deck": (build_flex_deck, "Universal composable deck: pick ANY mix/order of body slides — agenda, bullets, numbered steps, stat cards, two-col, team, timeline, native charts, tables, image evidence, quote, section dividers. Use when no fixed-shape template fits or the content needs varied visuals."),
     "project_kickoff": (build_project_kickoff, "Project kickoff: agenda, definition of victory, deliverables, team, approach, comms."),
     "proposal": (build_proposal, "Client proposal: problem, approach, scope, team, investment, why-us."),
     "report_out": (build_report_out, "Project results report-out: executive summary, findings, evidence, recommendations."),
@@ -637,12 +969,16 @@ def build_one(name: str, brand: dict, registry: Path, owner: str, created: str) 
     tpl = dest / "template.pptx"
     prs.save(str(tpl))
 
-    # Wire image-slot fields (global AND per-group) to their package media part.
+    # Wire image-slot fields (global, per-group AND per-body-type) to their media part.
     slot = media_part_for(tpl, png)
-    for f in fields + [gf for g in slide_groups for gf in g["fields"]]:
+    body = spec.get("body")
+    body_fields = [bf for d in (body or {}).get("types", {}).values()
+                   for bf in d.get("fields", [])]
+    for f in fields + [gf for g in slide_groups for gf in g["fields"]] + body_fields:
         if f["type"] == "image" and not f["media_part"]:
             f["media_part"] = slot
 
+    import hashlib
     manifest = {
         "template_id": f"_builtin/{name}",
         "client": "_builtin",
@@ -660,13 +996,20 @@ def build_one(name: str, brand: dict, registry: Path, owner: str, created: str) 
         "slide_groups": slide_groups,
         "slides": slides_meta,
         "source_terms": SOURCE_TERMS,
+        # validate.py fails a delivered deck whose media still contains this
+        # placeholder image — an image slot that was never swapped must not ship.
+        "placeholder_media_sha1": [hashlib.sha1(png).hexdigest()],
     }
+    if body:
+        manifest["body"] = body
     (dest / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False),
                                         encoding="utf-8")
     n_slides = len(prs.slides._sldIdLst)
-    n_fields = len(fields) + sum(len(g["fields"]) for g in slide_groups)
+    n_fields = len(fields) + sum(len(g["fields"]) for g in slide_groups) + len(body_fields)
     groups_note = (" (+" + ", ".join(f"{g['name']} ×{g.get('min', 1)}–{g.get('max') or '∞'}"
                                      for g in slide_groups) + ")") if slide_groups else ""
+    if body:
+        groups_note += f" (body: {len(body['types'])} composable types)"
     print(f"Registered _builtin/{name}: {n_slides} slides{groups_note}, {n_fields} fields -> {dest}")
     return dest
 

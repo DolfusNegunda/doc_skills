@@ -227,8 +227,8 @@
           "name": "evidence_visual",
           "type": "image",
           "example": "",
-          "guidance": "PNG/JPG path for this slide's chart (e.g. exported from Plotly/matplotlib at 2x). Swapped preserving geometry; omit to keep the placeholder.",
-          "required": false,
+          "guidance": "PNG/JPG path for this slide's image. REQUIRED: only add an evidence entry when you HAVE the file — a slide shipped with the placeholder visual fails validation.",
+          "required": true,
           "media_part": "ppt/media/image1.png"
         },
         {
@@ -310,5 +310,8 @@
     "Acme Mining",
     "Jane Mokoena",
     "Sipho Dlamini"
+  ],
+  "placeholder_media_sha1": [
+    "d6651b3ea4cf6552718d6c0eb3f9ddf8c57e004b"
   ]
 }
