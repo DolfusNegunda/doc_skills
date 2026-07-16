@@ -1,0 +1,36 @@
+{
+  "deck_eyebrow": "",
+  "deck_title": "",
+  "deck_subtitle": "",
+  "author_line": "",
+  "closing_statement": "",
+  "next_steps": [],
+  "body": [
+    {
+      "type": "agenda",
+      "heading": "",
+      "items": [
+        {
+          "title": "",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "type": "bullets",
+      "heading": "",
+      "intro": "",
+      "points": []
+    },
+    {
+      "type": "numbered",
+      "heading": "",
+      "items": [
+        {
+          "title": "",
+          "text": ""
+        }
+      ]
+    }
+  ]
+}

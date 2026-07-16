@@ -156,7 +156,10 @@ def main():
         "warnings": warnings,
         "n_slides": len(prs.slides._sldIdLst),
         "note": "Structural gate only. Also run render_pptx.py and Read every slide — "
-                "overflow, autofit shrink, overlap, and off-brand color are not visible here.",
+                "overflow, autofit shrink, overlap, and off-brand color are not visible here. "
+                "If this deck was FILLED from a registry template, this is the WRONG gate: run "
+                "building-document-templates/scripts/validate.py <deck> --client <c> --doc-type <t> "
+                "(the placeholder/slide-count/residue checks live there).",
     }
     print(json.dumps(report, indent=2, ensure_ascii=False))
     sys.exit(0 if not errors else 1)

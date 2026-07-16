@@ -33,16 +33,16 @@
       "name": "deck_subtitle",
       "type": "text",
       "example": "What moved, what's at risk, and the decisions we need.",
-      "guidance": "One-sentence framing under the title.",
-      "required": true,
+      "guidance": "One-sentence framing under the title. Omit if the user gave nothing suitable.",
+      "required": false,
       "media_part": ""
     },
     {
       "name": "author_line",
       "type": "text",
       "example": "Prepared by Operations · 15 October 2026",
-      "guidance": "Author/team and date.",
-      "required": true,
+      "guidance": "Author/team and date. Omit if unknown — never invent one.",
+      "required": false,
       "media_part": ""
     },
     {
@@ -57,8 +57,8 @@
       "name": "next_steps",
       "type": "list",
       "example": "Confirm peak-season staffing plan — owner TBC — by 31 October",
-      "guidance": "3–5 closing bullets with owners/dates ONLY if the user supplied them.",
-      "required": true,
+      "guidance": "Closing bullets ONLY from user-supplied actions/owners/dates. Omit entirely if none were given.",
+      "required": false,
       "media_part": ""
     }
   ],
@@ -646,8 +646,8 @@
             "name": "marker",
             "type": "text",
             "example": "01",
-            "guidance": "Big marker, e.g. 01 / 02 / A.",
-            "required": true,
+            "guidance": "Big marker, e.g. 01 / 02 / A. Omit for no number.",
+            "required": false,
             "media_part": ""
           },
           {

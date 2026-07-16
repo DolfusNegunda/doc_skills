@@ -841,10 +841,10 @@ def build_flex_deck(prs, st, png):
     fields = [
         F("deck_eyebrow", "OPERATIONS REVIEW · Q3 2026", "Small uppercase kicker on the cover: deck kind + period."),
         F("deck_title", "Q3 2026 Operations Review", "The deck title. Keep under ~8 words."),
-        F("deck_subtitle", "What moved, what's at risk, and the decisions we need.", "One-sentence framing under the title."),
-        F("author_line", "Prepared by Operations · 15 October 2026", "Author/team and date."),
+        F("deck_subtitle", "What moved, what's at risk, and the decisions we need.", "One-sentence framing under the title. Omit if the user gave nothing suitable.", required=False),
+        F("author_line", "Prepared by Operations · 15 October 2026", "Author/team and date. Omit if unknown — never invent one.", required=False),
         F("closing_statement", "Approve the Q4 operations plan", "The single closing ask, one sentence."),
-        F("next_steps", "Confirm peak-season staffing plan — owner TBC — by 31 October", "3–5 closing bullets with owners/dates ONLY if the user supplied them.", type="list"),
+        F("next_steps", "Confirm peak-season staffing plan — owner TBC — by 31 October", "Closing bullets ONLY from user-supplied actions/owners/dates. Omit entirely if none were given.", type="list", required=False),
     ]
 
     H = lambda ex: F("heading", ex, "This slide's headline — state the takeaway, not the topic.")
@@ -908,7 +908,7 @@ def build_flex_deck(prs, st, png):
                   "fields": [F("quote", "This quarter proved the network can absorb peak volume without adding sites.", "The statement (1–2 sentences)."),
                              F("attribution", "Chief Operating Officer, September review", "Who said it / where it's from.", required=False)]},
         "section": {"slide_index": 12, "purpose": "Dark chapter divider.",
-                    "fields": [F("marker", "01", "Big marker, e.g. 01 / 02 / A."),
+                    "fields": [F("marker", "01", "Big marker, e.g. 01 / 02 / A. Omit for no number.", required=False),
                                H("What the audit showed"),
                                F("note", "Three findings drive the recommendations.", "One muted line under the heading.", required=False)]},
     }

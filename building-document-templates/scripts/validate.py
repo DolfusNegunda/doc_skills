@@ -10,6 +10,7 @@ Prints a JSON report; exit 0 only when status == "OK".
 
 Usage:
     python scripts/validate.py out/acme-q4.docx
+    python scripts/validate.py out/deck.pptx --client _builtin --doc-type flex_deck
     python scripts/validate.py out/deck.pptx --template registry/acme/board-deck/template.pptx
 """
 from __future__ import annotations
@@ -143,6 +144,10 @@ def pptx_report(path: Path, template: Path | None, source_terms, slide_groups=No
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("file")
+    ap.add_argument("--client", default=None,
+                    help="With --doc-type: resolve template+manifest from the registry "
+                         "(same selector as fill.py — e.g. --client _builtin --doc-type flex_deck)")
+    ap.add_argument("--doc-type", default=None)
     ap.add_argument("--template", default=None, help="Compare structure against this template")
     ap.add_argument("--manifest", default=None,
                     help="Manifest to read source_terms from (source-residue check)")
@@ -153,6 +158,11 @@ def main():
     path = Path(args.file)
     if not path.exists():
         sys.exit(f"file not found: {path}")
+    if args.client and args.doc_type and not (args.template or args.manifest):
+        tpl, man = C.find_template(args.client, args.doc_type)
+        args.template = str(tpl)
+        args.manifest = str(man.get("_manifest_path") or
+                            Path(tpl).parent / "manifest.json")
     template = Path(args.template) if args.template else None
     fmt = C.detect_format(path)
 

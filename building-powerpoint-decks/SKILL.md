@@ -39,8 +39,10 @@ python scripts/registry.py scaffold --builtin exec-update --out content.json
 # edit content.json (scaffold prints per-field guidance AND a slide guide:
 # what each slide is for, which are repeatable, which are optional)
 python scripts/fill.py --client _builtin --doc-type exec_update --data content.json --out out.pptx
-python scripts/validate.py out.pptx --template registry/_builtin/exec_update/template.pptx \
-    --manifest registry/_builtin/exec_update/manifest.json             # must be OK
+python scripts/validate.py out.pptx --client _builtin --doc-type exec_update   # must be OK
+# (same selector as fill.py — resolves the template+manifest gates automatically;
+#  do NOT substitute building-powerpoint-decks/validate_pptx.py, which is the
+#  authoring-path style checker and skips the manifest gates)
 python ../building-powerpoint-decks/scripts/render_pptx.py out.pptx    # vision pass, every slide
 ```
 

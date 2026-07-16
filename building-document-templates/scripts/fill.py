@@ -46,7 +46,15 @@ def expand_list(paragraph, tag, items, wrap):
     pristine (still-tagged) paragraph inserted right after the previous one.
     """
     if not items:
-        paragraph._p.getparent().remove(paragraph._p)
+        # Drop the bullet line — but a text body must keep >=1 paragraph (an empty
+        # <p:txBody>/<w:tc> is schema-INVALID; PowerPoint refuses to open the file),
+        # so when this is the last paragraph, blank it instead of removing it.
+        p_el = paragraph._p
+        parent_el = p_el.getparent()
+        if sum(1 for c in parent_el if c.tag == p_el.tag) > 1:
+            parent_el.remove(p_el)
+        else:
+            C.replace_in_paragraph(paragraph, tag, "")
         return
     template_p = copy.deepcopy(paragraph._p)   # pristine copy (still holds the tag)
     parent = paragraph._parent
@@ -233,6 +241,15 @@ def _swap_instance_image(slide, media_part, image_path):
         if blip.get(qn("r:embed")) in target_rids:
             blip.set(qn("r:embed"), new_rid)
             hit = True
+    if hit:
+        # Drop the now-dangling rels to the placeholder media: a swapped slide must
+        # not keep the placeholder part reachable, or validate.py's placeholder
+        # gate fires on a deck whose visible images are all correct.
+        for rid in target_rids:
+            still_used = any(b.get(qn("r:embed")) == rid
+                             for b in slide._element.iter(qn("a:blip")))
+            if not still_used:
+                slide.part.drop_rel(rid)
     return hit
 
 
@@ -737,7 +754,8 @@ def main():
     else:
         sys.exit("Provide --client/--doc-type, or --template (+--manifest).")
 
-    data = json.loads(Path(args.data).read_text(encoding="utf-8"))
+    # utf-8-sig: tolerate the BOM that Windows PowerShell prepends to UTF-8 files.
+    data = json.loads(Path(args.data).read_text(encoding="utf-8-sig"))
     fmt = manifest["format"]
 
     # Slides don't reflow: a value much longer than the field's example is the main

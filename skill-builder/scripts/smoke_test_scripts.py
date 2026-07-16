@@ -565,10 +565,11 @@ def main():
         check("flex scaffold emits an ordered typed body list",
               rc == 0 and isinstance(fs.get("body"), list) and
               all("type" in e for e in fs["body"]))
+        # next_steps deliberately OMITTED (optional empty list must leave a valid
+        # txBody) and an image entry included (swap must drop the placeholder rel).
         flex_data = {
             "deck_eyebrow": "REVIEW", "deck_title": "Initech Q3", "deck_subtitle": "Sub.",
             "author_line": "Ops", "closing_statement": "Approve the plan",
-            "next_steps": ["Step one — owner TBC"],
             "body": [
                 {"type": "agenda", "heading": "Cover",
                  "items": [{"title": "One", "text": "A"}, {"title": "Two"}]},
@@ -579,6 +580,8 @@ def main():
                  "table": {"columns": ["Site", "Cost"], "rows": [["X", "1"], ["Y", "2"]]}},
                 {"type": "team", "heading": "Owners",
                  "items": [{"initials": "AB", "name": "Alpha", "role": "Lead"}]},
+                {"type": "image", "heading": "Pic", "image": str(tmp / "orig_logo.png"),
+                 "caption": "cap"},
                 {"type": "quote", "quote": "It works."},
             ],
         }
@@ -589,11 +592,21 @@ def main():
         rc2, d = run(f"{tdir}/validate.py", out_flex, "--template",
                      reg / "_builtin" / "flex_deck" / "template.pptx", "--manifest", fman)
         flex_names = zipfile.ZipFile(out_flex).namelist()
-        check("flex body fills 5 typed slides + native chart + table, validates",
+        check("flex body fills 6 typed slides + native chart + table + image, validates",
               rc == 0 and rc2 == 0 and d and d["status"] == "OK"
-              and d["checks"]["n_slides"] == 7          # cover + 5 body + closing
-              and not d["checks"]["placeholder_visuals"]
+              and d["checks"]["n_slides"] == 8          # cover + 6 body + closing
+              and not d["checks"]["placeholder_visuals"]   # swapped image drops old rel
               and any(n.startswith("ppt/charts/chart") for n in flex_names))
+        # Empty optional list must never leave a paragraph-less <p:txBody> —
+        # schema-invalid; PowerPoint refuses to open the file (field-test find).
+        import re as _re
+        with zipfile.ZipFile(out_flex) as zf:
+            txbody_ok = all(
+                "<a:p" in seg
+                for n in flex_names if _re.fullmatch(r"ppt/slides/slide\d+\.xml", n)
+                for seg in _re.findall(r"<p:txBody>.*?</p:txBody>",
+                                       zf.read(n).decode("utf-8", "ignore"), _re.S))
+        check("empty optional list leaves a schema-valid text body", txbody_ok)
         # unswapped placeholder visual must FAIL validation (warehouse-audit bug)
         rc, d = run(f"{tdir}/validate.py", reg / "_builtin" / "flex_deck" / "template.pptx",
                     "--template", reg / "_builtin" / "flex_deck" / "template.pptx",
