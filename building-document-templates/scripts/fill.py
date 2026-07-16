@@ -175,6 +175,15 @@ def clone_pptx_slide(prs, source):
     from pptx.oxml.ns import qn
 
     dest = prs.slides.add_slide(source.slide_layout)
+    # python-pptx names new slide parts len(slides)+1, which COLLIDES with an
+    # existing part after a slide deletion (duplicate zip entries corrupt the
+    # deck) — rename the clone to the first genuinely free slide partname.
+    from pptx.opc.packuri import PackURI
+    taken = {str(p.partname) for p in prs.part.package.iter_parts()} - {str(dest.part.partname)}
+    n = 1
+    while f"/ppt/slides/slide{n}.xml" in taken:
+        n += 1
+    dest.part.partname = PackURI(f"/ppt/slides/slide{n}.xml")
     d_el, s_el = dest._element, source._element
     d_el.remove(d_el.find(qn("p:cSld")))
     d_el.insert(0, copy.deepcopy(s_el.find(qn("p:cSld"))))

@@ -455,8 +455,9 @@ def build_project_kickoff(prs, st, png):
     bullets_slide(prs, st, "Project approach", tag("milestones"), intro=tag("approach_note"), size=18)
     two_list_slide(prs, st, "How we stay in sync", "COMMUNICATION", tag("comms_plan"),
                    "TRACKING", tag("tracking_items"))
+    bullets_slide(prs, st, tag("topic_heading"), tag("topic_points"))   # group: topic_slides
     closing_slide(prs, st, "NEXT STEPS", tag("closing_note"), tag("next_steps"))
-    return [
+    fields = [
         F("kickoff_date", "3 November 2026", "Kickoff meeting date."),
         F("project_name", "Haulage Transition Simulation Study", "The project's name — the big title."),
         F("project_tagline", "Simulating the fleet transition to trolley-assist across three sites.", "One sentence: what the project does."),
@@ -473,6 +474,27 @@ def build_project_kickoff(prs, st, png):
         F("closing_note", "Data access and site contacts unlock sprint 1 — here's what we need this week", "One-sentence closing framing the immediate asks."),
         F("next_steps", "Data extract of 12 months' dispatch records — Sipho Dlamini — by Friday", "3–5 action bullets with owners and dates.", type="list"),
     ]
+    slide_groups = [
+        {"name": "topic_slides", "slide_index": 7, "min": 0, "max": 4,
+         "purpose": "Extra topic slides before the close (risks, assumptions, data needs, ways of working) — one topic per slide. Omit for the standard kickoff.",
+         "fields": [
+             F("topic_heading", "What we need from your team", "This slide's headline — one topic."),
+             F("topic_points", "A named data owner per site by week 1", "3–6 bullets for this topic.", type="list"),
+         ]},
+    ]
+    slides = [
+        {"index": 0, "name": "Title", "purpose": "Cover — project name, tagline, presenter."},
+        {"index": 1, "name": "Agenda", "purpose": "4–7 items in running order."},
+        {"index": 2, "name": "Definition of victory", "purpose": "What success means + 'delivered when' bullets."},
+        {"index": 3, "name": "Deliverables", "purpose": "The contractual deliverables."},
+        {"index": 4, "name": "Team", "purpose": "One bullet per person: name — role — allocation."},
+        {"index": 5, "name": "Approach & milestones", "purpose": "Delivery approach + one bullet per sprint/milestone."},
+        {"index": 6, "name": "Comms & tracking", "purpose": "Two columns: cadence/channels vs tracking."},
+        {"index": 7, "name": "Extra topic", "group": "topic_slides",
+         "purpose": "Optional additional topics, one per slide."},
+        {"index": 8, "name": "Closing / next steps", "purpose": "Immediate asks with owners and dates."},
+    ]
+    return {"fields": fields, "slide_groups": slide_groups, "slides": slides}
 
 
 def build_proposal(prs, st, png):
@@ -483,8 +505,9 @@ def build_proposal(prs, st, png):
     bullets_slide(prs, st, "Scope and deliverables", tag("scope_items"))
     bullets_slide(prs, st, "The team", tag("team_members"))
     bullets_slide(prs, st, "Timeline and investment", tag("investment_lines"), intro=tag("investment_summary"), size=18)
+    bullets_slide(prs, st, tag("topic_heading"), tag("topic_points"))   # group: topic_slides
     closing_slide(prs, st, "WHY US", tag("value_statement"), tag("value_points"))
-    return [
+    fields = [
         F("proposal_date", "20 November 2026", "Proposal date."),
         F("proposal_title", "Fleet Optimisation Study", "Short engagement title."),
         F("client_name", "Acme Mining", "The prospective client's name."),
@@ -500,6 +523,26 @@ def build_proposal(prs, st, png):
         F("value_statement", "We've done this transition twelve times in mining — we start with the answer's shape, not a blank page", "The single 'why us' sentence."),
         F("value_points", "Twelve comparable engagements in the last five years", "3–5 differentiator bullets.", type="list"),
     ]
+    slide_groups = [
+        {"name": "topic_slides", "slide_index": 6, "min": 0, "max": 4,
+         "purpose": "Extra topic slides before the close (case studies, assumptions, risks, references) — one topic per slide. Omit for the standard proposal.",
+         "fields": [
+             F("topic_heading", "A comparable engagement, delivered", "This slide's headline — one topic."),
+             F("topic_points", "Similar scope delivered for a tier-1 operator in 2025", "3–6 bullets for this topic.", type="list"),
+         ]},
+    ]
+    slides = [
+        {"index": 0, "name": "Title", "purpose": "Cover — engagement title, client, contact."},
+        {"index": 1, "name": "Context & challenge", "purpose": "Problem statement + evidence of the pain."},
+        {"index": 2, "name": "Approach", "purpose": "Shape of the work + one bullet per phase."},
+        {"index": 3, "name": "Scope & deliverables", "purpose": "What's in scope, one per bullet."},
+        {"index": 4, "name": "Team", "purpose": "Name — role — relevant expertise."},
+        {"index": 5, "name": "Timeline & investment", "purpose": "Duration, team size, fee per phase."},
+        {"index": 6, "name": "Extra topic", "group": "topic_slides",
+         "purpose": "Optional additional topics, one per slide."},
+        {"index": 7, "name": "Closing / why us", "purpose": "The single 'why us' sentence + differentiators."},
+    ]
+    return {"fields": fields, "slide_groups": slide_groups, "slides": slides}
 
 
 def build_report_out(prs, st, png):
@@ -507,11 +550,11 @@ def build_report_out(prs, st, png):
                 tag("report_subtitle"), tag("author_line"))
     text_slide(prs, st, "Executive summary", tag("executive_summary"))
     divider_slide(prs, st, "01", tag("findings_heading"), tag("findings_note"))
-    bullets_slide(prs, st, "Key findings", tag("findings"))
-    visual_slide(prs, st, tag("evidence_heading"), tag("evidence_caption"), png)
+    bullets_slide(prs, st, tag("finding_heading"), tag("finding_points"))          # group: finding_slides
+    visual_slide(prs, st, tag("evidence_heading"), tag("evidence_caption"), png)   # group: evidence_slides
     bullets_slide(prs, st, "Recommendations", tag("recommendations"))
     closing_slide(prs, st, "CONCLUSION", tag("conclusion_statement"), tag("next_steps"))
-    return [
+    fields = [
         F("report_date", "12 December 2026", "Report-out date."),
         F("report_title", "Haulage Transition Study — Results", "Deck title."),
         F("report_subtitle", "What we found, what it means, and what to do next.", "One-sentence framing."),
@@ -519,14 +562,37 @@ def build_report_out(prs, st, png):
         F("executive_summary", "The study validated that a phased trolley-assist transition cuts haulage cost per tonne by 14% at current diesel prices, with payback inside 30 months. The binding constraint is substation capacity at the north pit, not fleet availability.", "3–5 sentence executive summary — findings first, then implication."),
         F("findings_heading", "What the analysis showed", "Dark divider heading for the findings chapter."),
         F("findings_note", "Three findings drive the recommendation.", "One muted line under the divider."),
-        F("findings", "Cost per tonne falls 14% in the phased scenario", "3–6 finding bullets — assertions, not topics.", type="list"),
-        F("evidence_heading", "Cost per tonne by scenario", "Assertion headline for the evidence visual."),
-        F("evidence_visual", "", "PNG/JPG path for the key results chart. Swapped preserving geometry.", type="image", required=False),
-        F("evidence_caption", "Simulated cost per tonne, 12-month horizon. Source: study model v2.1.", "Caption: units + source."),
         F("recommendations", "Commit to the phased transition starting north pit Q2 2027", "3–5 recommendation bullets, ranked, with owners where known.", type="list"),
         F("conclusion_statement", "The case is made — the next 90 days decide whether the savings start in 2027", "Single closing takeaway sentence."),
         F("next_steps", "Board decision on phase 1 capex — Sipho Dlamini — by 31 January", "3–5 next-step bullets with owners and dates.", type="list"),
     ]
+    slide_groups = [
+        {"name": "finding_slides", "slide_index": 3, "min": 1, "max": 5,
+         "purpose": "One finding (or finding theme) per slide, stated as an assertion with its supporting bullets.",
+         "fields": [
+             F("finding_heading", "Cost per tonne falls 14% in the phased scenario", "The finding as an assertion headline."),
+             F("finding_points", "Savings hold across the sensitivity range tested", "2–5 supporting bullets for this finding.", type="list"),
+         ]},
+        {"name": "evidence_slides", "slide_index": 4, "min": 0, "max": 3,
+         "purpose": "Evidence visuals — one chart image per slide. Omit the key (or pass []) for no visual slides.",
+         "fields": [
+             F("evidence_heading", "Cost per tonne by scenario", "Assertion headline for this visual."),
+             F("evidence_visual", "", "PNG/JPG path for this slide's chart. Swapped preserving geometry; omit to keep the placeholder.", type="image", required=False),
+             F("evidence_caption", "Simulated cost per tonne, 12-month horizon. Source: study model v2.1.", "Caption: units + source."),
+         ]},
+    ]
+    slides = [
+        {"index": 0, "name": "Title", "purpose": "Cover — date, title, subtitle, audience."},
+        {"index": 1, "name": "Executive summary", "purpose": "3–5 sentences: findings first, then implication."},
+        {"index": 2, "name": "Section divider", "purpose": "Dark chapter break into the findings."},
+        {"index": 3, "name": "Finding", "group": "finding_slides",
+         "purpose": "One finding per slide — assertion headline + supporting bullets."},
+        {"index": 4, "name": "Evidence visual", "group": "evidence_slides",
+         "purpose": "Chart image + source caption backing the findings."},
+        {"index": 5, "name": "Recommendations", "purpose": "Ranked recommendation bullets with owners."},
+        {"index": 6, "name": "Closing / conclusion", "purpose": "Single takeaway + next steps with owners and dates."},
+    ]
+    return {"fields": fields, "slide_groups": slide_groups, "slides": slides}
 
 
 TEMPLATES = {

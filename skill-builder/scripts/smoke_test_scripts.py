@@ -454,6 +454,11 @@ def main():
               rc == 0 and rc2 == 0 and d and d["status"] == "OK"
               and d["checks"]["n_slides"] == 8
               and all(f"Topic {i}" in sg_texts for i in (1, 2, 3)))
+        # delete+clone must not collide on slide partnames (duplicate zip entries)
+        from collections import Counter
+        sg_names = Counter(zipfile.ZipFile(out_sg).namelist())
+        check("slide clones get unique part names (no duplicate zip entries)",
+              not [n for n, c in sg_names.items() if c > 1])
         sg_missing = {k: v for k, v in sg.items() if k != "topic_slides"}
         (tmp / "sg_missing.json").write_text(json.dumps(sg_missing), encoding="utf-8")
         rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "exec_update",
