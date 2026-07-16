@@ -18,3 +18,6 @@ building-document-templates/examples/*.pptx
 
 # Local demo/scratch output — generated documents and renders, never pushed.
 output/
+
+# Vendored Plotly (4.5MB) — regenerated with scripts/vendor_plotly.py --fetch.
+presenting-with-html/assets/vendor/

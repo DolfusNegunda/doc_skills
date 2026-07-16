@@ -1,6 +1,6 @@
 ---
 name: presenting-with-html
-description: Build a polished, self-contained HTML report or presentation — for anyone in the org, from a team status update to a board deck. Two formats (a slide DECK with full navigation, or a long-form REPORT with sticky TOC and print/PDF styles) times two style presets (dark-first BOARDROOM glassmorphism, or light-first CLEAN corporate) from one component system — KPI cards, charts, tables, timelines, comparisons, quotes, figures — with theme-aware Plotly and a persisted dark/light toggle. DEFAULT PATH: write a content JSON and run scripts/build_html.py — the builder owns the HTML shell, navigation, and styling, so the output is correct by construction. Branding is injected from a brand pack OR an inline branding object (logo path + colors in the content JSON); with no branding supplied, every branding placeholder collapses and the neutral default renders. Use when the user asks for an HTML report, presentation, dashboard, web-based slide deck, or a detailed HTML document to fill with content.
+description: Build a polished, self-contained HTML report or presentation — for anyone in the org, from a team status update to a board deck. Two formats (a slide DECK with full navigation, or a long-form REPORT with sticky TOC and print/PDF styles) times three style presets (dark-first BOARDROOM glassmorphism, light-first CLEAN corporate, or EXECUTIVE editorial serif) from one component system — KPI cards, charts, tables, timelines, comparisons, quotes, figures — with theme-aware Plotly and a persisted dark/light toggle. DEFAULT PATH: write a content JSON and run scripts/build_html.py — the builder owns the HTML shell, navigation, and styling, so the output is correct by construction. Branding is injected from a brand pack OR an inline branding object (logo path + colors in the content JSON); with no branding supplied, every branding placeholder collapses and the neutral default renders. Use when the user asks for an HTML report, presentation, dashboard, web-based slide deck, or a detailed HTML document to fill with content.
 ---
 
 # Presenting with HTML
@@ -17,14 +17,16 @@ persisted light/dark toggle. Two formats, chosen per request:
   and print/PDF styles. Best for detailed reports read top-to-bottom, referenced, or
   printed — many sections, dense tables, thorough narrative.
 
-And two **style presets**, chosen per build (`--style` or `"style"` in the content JSON):
+And three **style presets**, chosen per build (`--style` or `"style"` in the content JSON):
 
 - **boardroom** (default) — dark-first glassmorphism, gradient accents; the premium
   presented-live look.
 - **clean** — light-first, flat white panels, hairline borders, solid accents,
   print-oriented; what most client-facing corporate reports expect.
+- **executive** — light-first editorial: warm paper, serif display headings, squared
+  corners, hairline rules; the annual-report / formal board-pack look.
 
-Both presets share the identical component vocabulary and support the dark/light toggle.
+All presets share the identical component vocabulary and support the dark/light toggle.
 
 For PowerPoint use [../building-powerpoint-decks/SKILL.md](../building-powerpoint-decks/SKILL.md);
 nail the story first with [../crafting-presentation-narratives/SKILL.md](../crafting-presentation-narratives/SKILL.md).
@@ -57,15 +59,17 @@ if a layout truly doesn't fit the block types, use the bespoke path at the end o
 ## Workflow (default: build from content)
 ```
 Progress:
-- [ ] 0. Choose format (deck vs report) + style (boardroom vs clean) from the request; ask if unstated
+- [ ] 0. Choose format (deck vs report) + style (boardroom/clean/executive) from the request signals
 - [ ] 1. Story: overview -> insights -> patterns -> breakdowns -> conclusion (one message per slide/section)
-- [ ] 2. Discover the vocabulary: python scripts/build_html.py --list  (formats, block types, brands)
-- [ ] 3. Write content.json (see examples/deck-content.json / examples/report-content.json)
-- [ ] 4. Build: python scripts/build_html.py --content content.json --out out.html --brand <name>
+- [ ] 2. Scaffold: python scripts/build_html.py --scaffold deck --out content.json   (report likewise)
+- [ ] 3. Fill content.json; prose fields accept **bold**, *italic*, `code`, [label](https://url)
+- [ ] 4. Build self-contained: python scripts/build_html.py --content content.json --out out.html --inline-plotly
 - [ ] 5. Validate: python scripts/validate_html.py out.html  -> must be "OK"
-- [ ] 6. QA by vision: open in a browser (or headless screenshot) and Read each slide/section, both themes
-- [ ] 7. Deliver self-contained: rebuild with --inline-plotly (or vendor_plotly.py --inline out.html)
+- [ ] 6. Vision QA: python scripts/render_screenshots.py out.html --out-dir shots, then Read every PNG
 ```
+While iterating on content, drop `--inline-plotly` for instant rebuilds; the **final** build
+must include it (or run `vendor_plotly.py --inline out.html`) so the deliverable is
+self-contained. The validator gives the same verdict either way.
 
 **Step 0 — Choose the format and style.** Signals: "deck / slides / present / walk the board
 through it" → deck. "report / document / detailed / read / print / PDF / email / share the
@@ -75,16 +79,20 @@ burn a round-trip confirming the obvious. **Ask only when genuinely ambiguous** 
 to click through, or a long-form report to scroll/print?"). When still unsure, default to
 **deck** for ≤ ~7 messages of mostly-visual content, **report** for detailed/reference
 material or anything printed. Style: "premium / boardroom / impressive / dark" → `boardroom`;
-"corporate / conservative / client-facing / printable / clean" → `clean`. Default boardroom
-for decks; for reports that will be printed or sent to a client, prefer `clean`.
+"corporate / conservative / client-facing / printable / clean" → `clean`; "annual report /
+editorial / formal / board pack" → `executive`. Default boardroom for decks; for reports
+that will be printed or sent to a client, prefer `clean` or `executive`.
 
 **Step 1 — Story first.** Decide the narrative before writing JSON. Every slide/section
 advances one message and the deliverable must answer: what happened, where did it
 concentrate, how did it change, what to do next. A beautiful deliverable with no message fails.
 
-**Step 3 — Write the content JSON.** The contract is
-[schema/content.schema.json](schema/content.schema.json); start from the matching example in
-[examples/](examples/). Essentials:
+**Steps 2–3 — Scaffold, then fill the content JSON.**
+`build_html.py --scaffold deck|report --out content.json` emits a skeleton with the exact
+field names — replace every value, delete blocks you don't need, duplicate ones you need
+more of. That's cheaper than reading an example; the full contract is
+[schema/content.schema.json](schema/content.schema.json) and complete worked inputs are in
+[examples/](examples/) if you want one. Essentials:
 
 - `meta` (title, `title_accent`, eyebrow, lead, author, date, up to 4 `kpis`) generates the
   title slide / hero — don't add one yourself.
@@ -102,9 +110,17 @@ concentrate, how did it change, what to do next. A beautiful deliverable with no
 - Field names are exact (`items` not `bullets`, `heading` not `title`, `milestones` not
   `events`). Check cheaply before building:
   `python scripts/build_html.py --content content.json --validate-only`.
+- **Safe inline rich text** in prose fields (paragraphs, bullets, card/table text, quotes,
+  milestone descriptions, leads, notes): `**bold**`, `*italic*`, `` `code` ``, and
+  `[label](https://url)` (https/http/mailto/# only). Values are escaped first, so raw HTML
+  never enters the document — a `<b>` tag renders as literal text. Headings, KPI values,
+  and labels stay plain.
 
-**Step 4 — Build.** Branding, three ways (all optional — with none, placeholders collapse
-and the neutral default renders):
+**Step 4 — Build (self-contained by default).** Include `--inline-plotly` on the final
+build so the deliverable needs nothing from the network (emailed/SharePoint/air-gapped/CSP);
+drop it while iterating for instant rebuilds. If the CDN is blocked, run
+`vendor_plotly.py --fetch` once and the vendored copy is reused offline. Branding, three
+ways (all optional — with none, placeholders collapse and the neutral default renders):
 
 1. **Brand pack**: `--brand <name-or-path>` — a folder with `brand.json` (+ logo), see
    [../brands/README.md](../brands/README.md). Client packs live outside the repo, passed by path.
@@ -122,32 +138,31 @@ The builder validates the JSON first and prints precise, fixable errors.
 nothing after `</html>`, unique IDs, no live `data-sample` content, classes actually
 defined), both theme token sets, persisted toggle, theme-aware charts, no leftover
 placeholders; deck nav / report TOC + print styles. Fix every error; **ship only on
-`"status": "OK"`.** A CDN-Plotly warning is expected until step 7. The validator blanks
-vendored-library `<script>` bodies before the placeholder scan, so it gives the same verdict
-before and after `--inline-plotly` — run it whenever you like.
+`"status": "OK"`.** The validator blanks vendored-library `<script>` bodies before the
+placeholder scan, so it gives the same verdict before and after `--inline-plotly`.
 
 **Step 6 — QA by vision (required before delivery).** The validator reads structure, not
-looks. Open the file in a browser and view every slide/section in **both** dark and light.
+looks. One command produces the full set of screenshots:
 
-*Theme contract (for scripted QA):* boardroom defaults **dark**, clean defaults **light**;
-the toggle persists to `localStorage` key `deck-theme` / `report-theme`; append
-**`?theme=dark`** or **`?theme=light`** to the file URL to force a theme for a screenshot
-(works with `file:///…out.html?theme=light`, not persisted).
+```
+python scripts/render_screenshots.py out.html --out-dir shots
+```
 
-*Browser ladder:* use whatever renderer exists — Chromium/Edge/Chrome
-`--headless=new --screenshot` (one invocation per screenshot), or Playwright if installed —
-then Read the image. **If no browser can run in the environment, do not silently skip this
-gate**: deliver only with an explicit caveat that the vision pass could not be performed,
-and never hack the environment or the scripts to fake it. Confirm the premium feel, KPIs and
-charts scale in, text has contrast in both themes, and nothing overflows (deck) or has a
-broken TOC/print layout (report).
+It auto-detects the browser and format, then shoots a **full pass in the default theme**
+(every slide / section) plus a **spot pass in the other theme** (first page + chart-bearing
+pages — charts are the only theme-sensitive components). Read every PNG: premium feel, KPIs
+and charts scale in, contrast in both themes, nothing overflowing (deck) or a broken
+TOC/print layout (report). `--second-theme full` for full double coverage when the user will
+present in both themes.
 
-**Step 7 — Self-contained delivery (required before sharing).** Charts load Plotly from a
-CDN while authoring, but an emailed/SharePoint/air-gapped file must not depend on the
-network. Rebuild with `--inline-plotly`, or run
-`python scripts/vendor_plotly.py --inline out.html`. The result is a single self-contained
-`.html`. (Run `vendor_plotly.py --fetch` once to vendor the library locally if your
-environment blocks the CDN.)
+*QA hooks (also usable by hand):* `?theme=dark|light` forces a theme; `?slide=N` (1-based)
+opens a deck on slide N; report sections are addressable as `#section-id`. Defaults:
+boardroom = dark, clean/executive = light; toggle persists to `localStorage`
+`deck-theme` / `report-theme`.
+
+**If no browser can run in the environment, do not silently skip this gate**: deliver only
+with an explicit caveat that the vision pass could not be performed, and never hack the
+environment or the scripts to fake it.
 
 ## Principles
 1. **Match the format to the use.** Deck = full-viewport slides for clicking/presenting;
@@ -196,7 +211,9 @@ only; never a second `<html>`, `<style>`, or `<script>` block, never a class the
 doesn't define. All gates (validate → vision → inline) still apply.
 
 ## Reference & assets
-- [scripts/build_html.py](scripts/build_html.py) — the builder (default path); `--list` shows the vocabulary.
+- [scripts/build_html.py](scripts/build_html.py) — the builder (default path); `--scaffold` emits a skeleton, `--list` shows the vocabulary, `--validate-only` checks content.
+- [scripts/render_screenshots.py](scripts/render_screenshots.py) — one-command vision-QA screenshots (full default theme + spot second theme).
+- [assets/styles/](assets/styles/) — the `clean` and `executive` preset overrides (boardroom is the base).
 - [schema/content.schema.json](schema/content.schema.json) — the content contract.
 - [examples/deck-content.json](examples/deck-content.json) / [examples/report-content.json](examples/report-content.json) — complete working inputs.
 - [assets/shells/](assets/shells/) + [assets/components/](assets/components/) — what the builder assembles (do not edit casually; they define the class vocabulary).
