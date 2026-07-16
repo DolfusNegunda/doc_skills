@@ -362,6 +362,58 @@ def main():
         check("mini-markup output passes the validator",
               rc == 0 and d and d["status"] == "OK")
 
+        # office components: all 8 new blocks build and validate in one showcase
+        built_office = tmp / "office.html"
+        rc, _ = run(f"{hdir}/build_html.py", "--content",
+                    ROOT / "presenting-with-html" / "examples" / "office-components.json",
+                    "--out", built_office)
+        office_html = built_office.read_text(encoding="utf-8") if built_office.exists() else ""
+        rc2, d = run(f"{hdir}/validate_html.py", built_office)
+        check("office blocks (agenda/callout/team/status/contact/steps/feature/definitions) build + validate",
+              rc == 0 and rc2 == 0 and d and d["status"] == "OK"
+              and not d["checks"].get("undefined_classes")
+              and all(c in office_html for c in
+                      ('class="agenda"', 'class="callout recommendation"', 'class="team-grid"',
+                       'class="rag amber"', 'class="steps"', 'class="defs"')))
+
+        # self-correcting content errors + warnings
+        (tmp / "warn_content.json").write_text(json.dumps({
+            "format": "deck", "meta": {"title": "T", "title_accent": "Nope"},
+            "blocks": [{"type": "bullets", "heading": "H", "items": ["a"]}]}), encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / hdir / "build_html.py"),
+             "--content", str(tmp / "warn_content.json"), "--validate-only"],
+            capture_output=True, text=True)
+        check('"blocks" suggests the right list name for the format',
+              proc.returncode != 0 and 'did you mean "slides"' in proc.stdout)
+        (tmp / "warn_content.json").write_text(json.dumps({
+            "format": "deck", "meta": {"title": "T", "title_accent": "Nope"},
+            "slides": [{"type": "bullets", "heading": "H",
+                        "items": [f"item {i}" for i in range(12)]}]}), encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / hdir / "build_html.py"),
+             "--content", str(tmp / "warn_content.json"), "--validate-only"],
+            capture_output=True, text=True)
+        check("title_accent + overflow warnings fire without failing the build",
+              proc.returncode == 0 and "accent will not render" in proc.stdout
+              and "split this slide" in proc.stdout)
+
+        # minimal scaffold + passthrough-chart warning
+        rc, mini = run(f"{hdir}/build_html.py", "--scaffold", "report", "--minimal")
+        check("--scaffold --minimal emits the smallest skeleton",
+              rc == 0 and mini and len(mini.get("sections", [])) == 2)
+        (tmp / "pt_content.json").write_text(json.dumps({
+            "format": "report", "meta": {"title": "T"},
+            "sections": [{"type": "chart", "heading": "H",
+                          "chart": {"plotly": {"data": [{"type": "bar", "x": [1], "y": [2]}]}}},
+                         {"type": "text", "heading": "X", "paragraphs": ["p"]}]}), encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / hdir / "build_html.py"),
+             "--content", str(tmp / "pt_content.json"), "--validate-only"],
+            capture_output=True, text=True)
+        check("raw plotly passthrough triggers the no-theme-restyle warning",
+              proc.returncode == 0 and "NOT restyle" in proc.stdout)
+
         # third style preset builds and validates
         built_exec = tmp / "built_exec.html"
         rc, _ = run(f"{hdir}/build_html.py", "--content",

@@ -17,7 +17,7 @@
   body { background:var(--bg-0); }
   .slide-inner, .report-section, .toc, .kpi, .card, .chart-panel, .compare-panel,
   .figure, .table-wrap, .brand-mark, .hero-logo, .nav-btn, .theme-toggle,
-  .slide-count, .to-top {
+  .slide-count, .to-top, .person, .callout {
     backdrop-filter:none; -webkit-backdrop-filter:none; border-radius:0;
     box-shadow:none;
   }

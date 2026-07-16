@@ -6,7 +6,7 @@
   "required": ["format", "meta"],
   "properties": {
     "format": { "enum": ["deck", "report"], "description": "deck = full-screen slides with navigation; report = long-form scrolling document with TOC + print styles." },
-    "style": { "enum": ["boardroom", "clean"], "description": "Visual preset: boardroom = dark-first glassmorphism; clean = light-first flat corporate, print-oriented. Default boardroom. CLI --style overrides." },
+    "style": { "enum": ["boardroom", "clean", "executive"], "description": "Visual preset: boardroom = dark-first glassmorphism; clean = light-first flat corporate, print-oriented; executive = light-first editorial serif, annual-report look. Default boardroom. CLI --style overrides." },
     "brand": { "type": "string", "description": "Brand pack name under brands/ or a path to a client pack kept outside the repo. CLI --brand overrides." },
     "branding": {
       "type": "object",
@@ -93,7 +93,7 @@
       "type": "object", "required": ["type"],
       "description": "One slide (deck) or one section (report). 'section' dividers are deck-only.",
       "properties": {
-        "type": { "enum": ["section", "bullets", "kpi", "cards", "chart", "table", "two-col", "text", "quote", "timeline", "comparison", "image", "closing"] },
+        "type": { "enum": ["section", "bullets", "kpi", "cards", "chart", "table", "two-col", "text", "quote", "timeline", "comparison", "image", "closing", "agenda", "callout", "team", "status", "contact", "steps", "feature", "definitions"] },
         "heading": { "type": "string", "description": "Required for every type except kpi, quote, and image (optional there)." },
         "note": { "type": "string", "description": "Muted one-liner under the heading." },
         "toc": { "type": "string", "description": "Report only: contents-panel label." },
@@ -121,8 +121,31 @@
         "src": { "type": "string", "description": "image: path to png/jpg/svg, relative to this content JSON. Embedded base64 (self-contained)." },
         "alt": { "type": "string", "description": "image: accessibility text" },
         "caption": { "type": "string", "description": "image: small caption under the figure" },
-        "lead": { "type": "string", "description": "closing" },
-        "eyebrow": { "type": "string", "description": "closing (defaults to 'Next steps')" }
+        "lead": { "type": "string", "description": "closing / contact: framing paragraph" },
+        "eyebrow": { "type": "string", "description": "closing (defaults to 'Next steps')" },
+        "style": { "enum": ["takeaway", "recommendation", "action", "info", "warning"], "description": "callout: box kind. Sets the label (overridable via heading) and the accent (action/warning = red)." },
+        "text": { "type": "string", "description": "callout: the message (rich text allowed)" },
+        "people": {
+          "type": "array", "description": "team: one card per person; photo is embedded base64, else an initials avatar renders",
+          "items": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "role": { "type": "string" }, "photo": { "type": "string", "description": "path relative to the content JSON" }, "email": { "type": "string" }, "note": { "type": "string" } } }
+        },
+        "statuses": {
+          "type": "array", "description": "status: RAG rows",
+          "items": { "type": "object", "required": ["label", "status"], "properties": { "label": { "type": "string" }, "status": { "enum": ["green", "amber", "red"] }, "note": { "type": "string" } } }
+        },
+        "contacts": {
+          "type": "array", "description": "contact: structured thank-you/contact cards",
+          "items": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "role": { "type": "string" }, "email": { "type": "string" }, "phone": { "type": "string" } } }
+        },
+        "steps": {
+          "type": "array", "description": "steps: numbered process, in order",
+          "items": { "anyOf": [ { "type": "string" }, { "type": "object", "required": ["title"], "properties": { "title": { "type": "string" }, "description": { "type": "string" } } } ] }
+        },
+        "terms": {
+          "type": "array", "description": "definitions: term/definition list",
+          "items": { "type": "object", "required": ["term", "definition"], "properties": { "term": { "type": "string" }, "definition": { "type": "string" } } }
+        },
+        "image_side": { "enum": ["left", "right"], "description": "feature: which side the image sits on (default right)" }
       }
     }
   }

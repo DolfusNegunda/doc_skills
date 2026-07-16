@@ -17,7 +17,8 @@
   .slide-inner, .report-section, .toc {
     backdrop-filter:none; -webkit-backdrop-filter:none; border-radius:12px;
   }
-  .kpi, .card, .chart-panel, .compare-panel, .figure, .brand-mark, .hero-logo { border-radius:10px; }
+  .kpi, .card, .chart-panel, .compare-panel, .figure, .brand-mark, .hero-logo,
+  .person, .callout { border-radius:10px; }
   .table-wrap { border-radius:8px; }
   thead th { backdrop-filter:none; }
   .accent, .section-num {

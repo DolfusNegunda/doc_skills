@@ -43,7 +43,7 @@ BROWSER_CANDIDATES = [
 ]
 
 
-def find_browser(explicit: str | None) -> str:
+def find_browser(explicit: str | None) -> str | None:
     if explicit:
         p = shutil.which(explicit) or (explicit if Path(explicit).exists() else None)
         if not p:
@@ -53,10 +53,31 @@ def find_browser(explicit: str | None) -> str:
         p = shutil.which(cand) or (cand if Path(cand).exists() else None)
         if p:
             return p
-    sys.exit("No Chromium-family browser found (tried Edge/Chrome/Chromium). "
-             "Install one or pass --browser <path>. If none can run in this "
-             "environment, the vision gate cannot execute — say so explicitly "
-             "when delivering; do not skip it silently.")
+    return None
+
+
+def no_browser_fallback(path: Path) -> None:
+    """Locked-down environments (no Chromium, missing system libs, no root): the
+    vision gate CANNOT run. Never fake it, never patch around it, never skip it
+    silently — run the structural self-check and attach the disclosure verbatim
+    to the delivery so the recipient knows what was and wasn't verified."""
+    import subprocess as sp
+    here = Path(__file__).resolve().parent
+    print("No browser available — running the structural self-check instead "
+          "(NOT a substitute for looking at the pages):")
+    r = sp.run([sys.executable, str(here / "validate_html.py"), str(path)],
+               capture_output=True, text=True)
+    print(f"  validate_html.py: {'OK' if r.returncode == 0 else 'FAIL — fix errors first'}")
+    html = path.read_text(encoding="utf-8", errors="ignore")
+    print(f"  charts registered: {html.count('data-chart=')}   "
+          f"embedded images: {html.count('data:image/')}   "
+          f"file size: {path.stat().st_size / 1e6:.1f} MB")
+    print("\nREQUIRED DISCLOSURE — deliver only with this text attached:")
+    print("  The mandatory visual QA pass could not be performed in this environment")
+    print("  (no headless browser could run). Structural validation passed, but layout,")
+    print("  theme contrast, overflow, and chart rendering have NOT been visually")
+    print("  verified - please open the file and check each page before distributing.")
+    sys.exit(3)
 
 
 def shoot(browser: str, url: str, out_png: Path, size: str, timeout: int) -> bool:
@@ -135,6 +156,8 @@ def main() -> None:
     other_theme = "light" if default_theme == "dark" else "dark"
 
     browser = find_browser(args.browser)
+    if browser is None:
+        no_browser_fallback(path)
     # Absolute: headless Chromium resolves --screenshot against ITS OWN cwd.
     out_dir = Path(args.out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)

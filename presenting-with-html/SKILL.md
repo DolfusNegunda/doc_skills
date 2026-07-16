@@ -5,6 +5,10 @@ description: "Build a polished, self-contained HTML report or presentation — f
 
 # Presenting with HTML
 
+**Fill-only run? Read [QUICKREF.md](QUICKREF.md) instead** (top-level keys, exact block
+fields, the gates, the gotchas — 40 lines). Read this full file only for bespoke work or
+when a gate fails.
+
 ## Scope
 Turn content or data into a **premium, self-contained HTML deliverable** that reads as one
 design system — glassmorphism, KPI cards, interactive theme-aware Plotly charts, a
@@ -45,7 +49,12 @@ if a layout truly doesn't fit the block types, use the bespoke path at the end o
 ## Requirements — check before you start
 - **Use the whole skill folder** (`scripts/`, `assets/`, `schema/`, `examples/`). The builder
   assembles from `assets/shells/` + `assets/components/`; with a partial checkout it stops
-  and says which files are missing.
+  and says which files are missing. Fetching from GitHub on a cold start: one archive
+  request (`GET /repos/<owner>/<repo>/tarball/<branch>`, then extract) beats pulling 30+
+  file blobs individually — cheaper, and survives ephemeral scratch directories being wiped.
+- **Never Read the built HTML back into context** — with inlined Plotly it is ~5–6 MB.
+  Verify through `validate_html.py`'s JSON verdict and targeted grep-style checks
+  (e.g. does the file contain a heading string), then the screenshot vision pass.
 - The repo-root [../brands/](../brands/README.md) directory is **optional**: without it the
   builder falls back to embedded neutral defaults (a client pack passed by *path* still works).
 - **Never edit the scripts, shells, or components to get past an error** — a path failure or
@@ -97,11 +106,19 @@ more of. That's cheaper than reading an example; the full contract is
 - `meta` (title, `title_accent`, eyebrow, lead, author, date, up to 4 `kpis`) generates the
   title slide / hero — don't add one yourself.
 - Deck blocks: `section` (numbered divider), `bullets`, `kpi`, `cards`, `chart`, `table`,
-  `two-col`, `text`, `quote`, `timeline`, `comparison`, `image`, `closing`. Report blocks:
-  the same minus `section`; each may set `toc` for its contents-panel label.
+  `two-col`, `text`, `quote`, `timeline`, `comparison`, `image`, `closing` — plus the
+  office set: `agenda` (numbered contents), `callout` (Key takeaway / Recommendation /
+  Action required box), `team` (people cards with photo slot), `status` (RAG rows),
+  `contact` (structured thank-you/contacts), `steps` (numbered process), `feature`
+  (image+text row), `definitions` (term/definition list). Report blocks: the same minus
+  `section`; each may set `toc` for its contents-panel label.
 - Charts are a simple spec — `{"chart_type": "bar|line|area|pie|scatter", "categories":
   [...], "series": [{"name", "values"}]}` — converted to theme-aware Plotly that restyles on
-  the theme toggle. Raw `{"plotly": {"data", "layout"}}` passthrough exists for exotic charts.
+  the theme toggle. Raw `{"plotly": {"data", "layout"}}` passthrough exists for exotic charts
+  but **keeps its authored colors — it does not restyle on the toggle** (the builder warns).
+  All charts are **static build-time snapshots**: no live data connection; rebuild to refresh.
+- Deck slides don't auto-shrink: the builder warns on overflow risk (too many bullets/rows/
+  chars per slide) with a *split this slide* message — heed it; the vision gate is authoritative.
 - `image` blocks embed the file base64 (self-contained); paths resolve relative to the
   content JSON. `timeline` takes ordered `milestones`; `comparison` takes titled
   `left`/`right` item lists; `quote` is a pull-quote with optional attribution.
@@ -119,7 +136,9 @@ more of. That's cheaper than reading an example; the full contract is
 **Step 4 — Build (self-contained by default).** Include `--inline-plotly` on the final
 build so the deliverable needs nothing from the network (emailed/SharePoint/air-gapped/CSP);
 drop it while iterating for instant rebuilds. If the CDN is blocked, run
-`vendor_plotly.py --fetch` once and the vendored copy is reused offline. Branding, three
+`vendor_plotly.py --fetch` once and the vendored copy is reused offline. When the user
+explicitly doesn't need offline safety and wants a small file, build with **`--lite`**
+(CDN-linked, ~50 KB instead of ~5 MB; charts need internet at view time). Branding, three
 ways (all optional — with none, placeholders collapse and the neutral default renders):
 
 1. **Brand pack**: `--brand <name-or-path>` — a folder with `brand.json` (+ logo), see
@@ -160,9 +179,10 @@ opens a deck on slide N; report sections are addressable as `#section-id`. Defau
 boardroom = dark, clean/executive = light; toggle persists to `localStorage`
 `deck-theme` / `report-theme`.
 
-**If no browser can run in the environment, do not silently skip this gate**: deliver only
-with an explicit caveat that the vision pass could not be performed, and never hack the
-environment or the scripts to fake it.
+**If no browser can run in the environment** (missing system libs, no root — it happens in
+sandboxes), `render_screenshots.py` detects it, runs a **structural self-check** instead, and
+prints a REQUIRED DISCLOSURE paragraph. Deliver only with that disclosure attached verbatim;
+never hack the environment or the scripts to fake the gate, and never skip it silently.
 
 ## Principles
 1. **Match the format to the use.** Deck = full-viewport slides for clicking/presenting;

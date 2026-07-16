@@ -89,12 +89,15 @@ EMBEDDED_DEFAULT_BRAND = {
 }
 
 TOKEN_RE = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
+_OFFICE = ("agenda", "callout", "team", "status", "contact", "steps", "feature", "definitions")
 DECK_TYPES = ("section", "bullets", "kpi", "cards", "chart", "table", "two-col", "text",
-              "quote", "timeline", "comparison", "image", "closing")
+              "quote", "timeline", "comparison", "image", "closing") + _OFFICE
 REPORT_TYPES = ("bullets", "kpi", "cards", "chart", "table", "two-col", "text",
-                "quote", "timeline", "comparison", "image", "closing")
+                "quote", "timeline", "comparison", "image", "closing") + _OFFICE
 SUB_TYPES = ("text", "bullets", "chart", "table", "kpi", "image")
 CHART_TYPES = ("bar", "line", "area", "pie", "scatter")
+CALLOUT_KINDS = ("takeaway", "recommendation", "action", "info", "warning")
+RAG_STATUSES = ("green", "amber", "red")
 STYLES = {
     "boardroom": {"default_theme": "dark",
                   "blurb": "dark-first glassmorphism — the boardroom look"},
@@ -122,6 +125,14 @@ BLOCK_FIELDS = {
     "comparison": _COMMON | {"left", "right"},
     "image": _COMMON | {"src", "alt", "caption"},
     "closing": _COMMON | {"lead", "eyebrow", "cards"},
+    "agenda": _COMMON | {"items"},
+    "callout": _COMMON | {"style", "text"},
+    "team": _COMMON | {"people"},
+    "status": _COMMON | {"statuses"},
+    "contact": _COMMON | {"lead", "contacts"},
+    "steps": _COMMON | {"steps"},
+    "feature": _COMMON | {"src", "alt", "caption", "image_side", "paragraphs"},
+    "definitions": _COMMON | {"terms"},
 }
 SUB_FIELDS = {
     "text": {"type", "heading", "paragraphs", "text"},
@@ -137,6 +148,11 @@ ENTRY_FIELDS = {
     "kpis": {"label", "value", "delta", "down"},
     "cards": {"heading", "text", "big", "accent"},
     "milestones": {"label", "title", "description", "done"},
+    "people": {"name", "role", "photo", "email", "note"},
+    "statuses": {"label", "status", "note"},
+    "contacts": {"name", "role", "email", "phone"},
+    "steps": {"title", "description"},
+    "terms": {"term", "definition"},
 }
 # Common wrong-name -> right-name corrections; the first candidate valid for the
 # block at hand wins. Applied ONLY when the wrong name is not itself valid there.
@@ -355,10 +371,67 @@ def footer_line(brand: dict, sep: str = "  ·  ") -> str:
     return esc(sep.join(bits))
 
 
+# ---------------- Overflow heuristics (deck slides do not auto-shrink) ----------------
+# Reports scroll, so only deck slides can clip. These are conservative rules of
+# thumb — the vision gate stays authoritative; the point is that pasting long
+# office content can never produce silently clipped output.
+
+_SPLIT = "slide panels do not auto-shrink — split this slide (or move detail to a report)"
+
+
+def _txt_len(items) -> int:
+    return sum(len(i.get("text", "") + i.get("sub", "")) if isinstance(i, dict) else len(str(i))
+               for i in items or [])
+
+
+def overflow_warnings(doc: dict) -> list[str]:
+    if doc.get("format") != "deck":
+        return []
+    warns = []
+    for i, b in enumerate(doc.get("slides") or []):
+        if not isinstance(b, dict):
+            continue
+        t = b.get("type", "?")
+        w = f"overflow risk: slides[{i}] ({t})"
+        if len(str(b.get("heading", ""))) > 90:
+            warns.append(f"{w}: heading is {len(str(b['heading']))} chars — wraps 3+ lines; tighten it")
+        if t in ("bullets", "agenda"):
+            n, chars = len(b.get("items") or []), _txt_len(b.get("items"))
+            if n > 8 or chars > 700:
+                warns.append(f"{w}: {n} items / {chars} chars — {_SPLIT}")
+        elif t == "table" and len(b.get("rows") or []) > 8:
+            warns.append(f"{w}: {len(b['rows'])} rows — {_SPLIT}")
+        elif t == "text" and sum(len(str(p)) for p in b.get("paragraphs") or []) > 1100:
+            warns.append(f"{w}: paragraphs total "
+                         f"{sum(len(str(p)) for p in b['paragraphs'])} chars — {_SPLIT}")
+        elif t == "two-col":
+            for side in ("left", "right"):
+                s = b.get(side) or {}
+                if isinstance(s, dict) and len(s.get("items") or []) > 7:
+                    warns.append(f"{w}.{side}: {len(s['items'])} bullets in a half-width column — {_SPLIT}")
+        elif t == "timeline" and len(b.get("milestones") or []) > 6:
+            warns.append(f"{w}: {len(b['milestones'])} milestones — {_SPLIT}")
+        elif t in ("cards", "team") and len(b.get("cards") or b.get("people") or []) > 6:
+            warns.append(f"{w}: more than 6 cards — {_SPLIT}")
+        elif t == "steps" and len(b.get("steps") or []) > 7:
+            warns.append(f"{w}: {len(b['steps'])} steps — {_SPLIT}")
+        elif t == "status" and len(b.get("statuses") or []) > 8:
+            warns.append(f"{w}: {len(b['statuses'])} status rows — {_SPLIT}")
+        elif t == "definitions" and len(b.get("terms") or []) > 7:
+            warns.append(f"{w}: {len(b['terms'])} terms — {_SPLIT}")
+        elif t == "kpi" and len(b.get("kpis") or []) > 4:
+            warns.append(f"{w}: {len(b['kpis'])} KPI cards — max 4 fit on one row")
+    return warns
+
+
 # ---------------- Content validation ----------------
 
-def validate_content(doc: dict) -> list[str]:
+def validate_content(doc: dict) -> tuple[list[str], list[str]]:
+    """Returns (errors, warnings). Errors block the build; warnings print but
+    don't fail — they flag content that renders, just probably not as intended
+    (non-rendering accent, non-theming passthrough charts, overflow risk)."""
     errs: list[str] = []
+    warns: list[str] = []
 
     def need(cond, msg):
         if not cond:
@@ -372,13 +445,21 @@ def validate_content(doc: dict) -> list[str]:
     other = "sections" if fmt == "deck" else "slides"
     if doc.get(other) is not None:
         errs.append(f'a {fmt} uses "{key}", not "{other}"')
+    if doc.get("blocks") is not None:
+        errs.append(f'top level: unknown field "blocks" — did you mean "{key}"? '
+                    f'(a {fmt} names its block list "{key}")')
     blocks = doc.get(key)
     need(isinstance(blocks, list) and blocks, f'"{key}" must be a non-empty list of blocks')
     if errs:
-        return errs
+        return errs, warns
 
-    errs += _key_errors(doc, TOP_FIELDS, "top level")
+    errs += _key_errors({k: v for k, v in doc.items() if k != "blocks"},
+                        TOP_FIELDS, "top level")
     errs += _key_errors(meta, META_FIELDS, "meta")
+    accent = meta.get("title_accent")
+    if accent and accent not in str(meta.get("title", "")):
+        warns.append(f'meta.title_accent {accent!r} is not a substring of meta.title — '
+                     "the accent will not render. Make it an exact substring.")
     for j, entry in enumerate(meta.get("kpis") or []):
         if isinstance(entry, dict):
             errs += _key_errors(entry, ENTRY_FIELDS["kpis"], f"meta.kpis[{j}]")
@@ -412,6 +493,10 @@ def validate_content(doc: dict) -> list[str]:
             errs.append(f"{where}: cards is required")
         if t == "chart":
             errs += chart_errors(b.get("chart"), where)
+            if isinstance(b.get("chart"), dict) and "plotly" in b["chart"]:
+                warns.append(f"{where}: raw plotly passthrough keeps its authored colors and "
+                             "will NOT restyle on the light/dark toggle — check both themes in "
+                             "the vision pass (all charts are static build-time snapshots).")
         if t == "table":
             cols, rows = b.get("columns"), b.get("rows")
             if not cols or not isinstance(rows, list) or not rows:
@@ -450,12 +535,73 @@ def validate_content(doc: dict) -> list[str]:
                     errs.append(f"{where}.{side}: needs {{title, items:[...]}}")
         if t == "image" and not b.get("src"):
             errs.append(f"{where}: src (path to a png/jpg/svg) is required")
+        if t == "agenda" and not b.get("items"):
+            errs.append(f"{where}: items is required (the agenda entries, in running order)")
+        if t == "callout":
+            if not b.get("text"):
+                errs.append(f"{where}: text is required (the callout message)")
+            if b.get("style") and b["style"] not in CALLOUT_KINDS:
+                errs.append(f"{where}: style must be one of {', '.join(CALLOUT_KINDS)}")
+        if t == "team":
+            people = b.get("people")
+            if not isinstance(people, list) or not people:
+                errs.append(f"{where}: people must be a non-empty list of "
+                            "{name, role?, photo?, email?, note?}")
+            else:
+                for j, p_ in enumerate(people):
+                    if not isinstance(p_, dict) or not p_.get("name"):
+                        errs.append(f"{where}: people[{j}] needs at least a name")
+        if t == "status":
+            sts = b.get("statuses")
+            if not isinstance(sts, list) or not sts:
+                errs.append(f"{where}: statuses must be a non-empty list of "
+                            "{label, status: green|amber|red, note?}")
+            else:
+                for j, s_ in enumerate(sts):
+                    if (not isinstance(s_, dict) or not s_.get("label")
+                            or s_.get("status") not in RAG_STATUSES):
+                        errs.append(f"{where}: statuses[{j}] needs a label and "
+                                    f"status in {', '.join(RAG_STATUSES)}")
+        if t == "contact":
+            cs = b.get("contacts")
+            if not isinstance(cs, list) or not cs:
+                errs.append(f"{where}: contacts must be a non-empty list of "
+                            "{name, role?, email?, phone?}")
+            else:
+                for j, c_ in enumerate(cs):
+                    if not isinstance(c_, dict) or not c_.get("name"):
+                        errs.append(f"{where}: contacts[{j}] needs at least a name")
+        if t == "steps":
+            st_ = b.get("steps")
+            if not isinstance(st_, list) or not st_:
+                errs.append(f"{where}: steps must be a non-empty list of "
+                            "str or {title, description?}")
+            else:
+                for j, s_ in enumerate(st_):
+                    if isinstance(s_, dict) and not s_.get("title"):
+                        errs.append(f"{where}: steps[{j}] needs at least a title")
+        if t == "feature":
+            if not b.get("src"):
+                errs.append(f"{where}: src (image path) is required")
+            if not b.get("paragraphs"):
+                errs.append(f"{where}: paragraphs is required (the text beside the image)")
+            if b.get("image_side") and b["image_side"] not in ("left", "right"):
+                errs.append(f'{where}: image_side must be "left" or "right"')
+        if t == "definitions":
+            terms = b.get("terms")
+            if not isinstance(terms, list) or not terms:
+                errs.append(f"{where}: terms must be a non-empty list of {{term, definition}}")
+            else:
+                for j, d_ in enumerate(terms):
+                    if not isinstance(d_, dict) or not d_.get("term") or not d_.get("definition"):
+                        errs.append(f"{where}: terms[{j}] needs term and definition")
 
     # `{{` in content collides with the template-token syntax the validator polices.
     flat = json.dumps(doc)
     if "{{" in flat:
         errs.append('content values must not contain "{{" (reserved template syntax)')
-    return errs
+    warns += overflow_warnings(doc)
+    return errs, warns
 
 
 def chart_errors(spec, where: str) -> list[str]:
@@ -644,6 +790,101 @@ def quote_html(block: dict) -> str:
                {"quote": rich(block["quote"]), "attribution": attr})
 
 
+def agenda_html(items: list) -> str:
+    lis = []
+    for it in items:
+        if isinstance(it, dict):
+            s = f'<div class="sub">{rich(it["sub"])}</div>' if it.get("sub") else ""
+            lis.append(f"<li>{rich(it.get('text', ''))}{s}</li>")
+        else:
+            lis.append(f"<li>{rich(it)}</li>")
+    return sub(partial("shared/agenda.html"), {"items": "\n".join(lis)})
+
+
+def callout_html(block: dict) -> str:
+    kind = block.get("style", "takeaway")
+    label = block.get("heading") or {"takeaway": "Key takeaway",
+                                     "recommendation": "Recommendation",
+                                     "action": "Action required",
+                                     "info": "Note", "warning": "Warning"}[kind]
+    return sub(partial("shared/callout.html"),
+               {"kind": kind, "label": esc(label), "text": rich(block["text"])})
+
+
+def team_html(people: list, base_dir: Path) -> str:
+    out = []
+    for p in people:
+        if p.get("photo"):
+            ph = Path(p["photo"])
+            ph = ph if ph.is_absolute() else (base_dir / ph)
+            if not ph.exists():
+                sys.exit(f"team block: photo not found: {ph} (paths resolve relative to the content JSON)")
+            avatar = (f'<div class="avatar"><img src="{file_data_uri(ph)}" '
+                      f'alt="{esc(p["name"])}"></div>')
+        else:
+            initials = "".join(w[0] for w in str(p["name"]).split()[:2]).upper()
+            avatar = f'<div class="avatar">{esc(initials)}</div>'
+        role = f'<div class="person-role">{esc(p["role"])}</div>' if p.get("role") else ""
+        email = (f'<div class="person-note"><a href="mailto:{esc(p["email"])}">{esc(p["email"])}</a></div>'
+                 if p.get("email") else "")
+        note = f'<div class="person-note">{rich(p["note"])}</div>' if p.get("note") else ""
+        out.append(f'<div class="person">{avatar}<div class="person-name">{esc(p["name"])}</div>'
+                   f"{role}{email}{note}</div>")
+    return sub(partial("shared/team.html"), {"people": "\n".join(out)})
+
+
+def status_html(statuses: list) -> str:
+    rows = []
+    for s in statuses:
+        note = f'<div class="rag-note">{rich(s["note"])}</div>' if s.get("note") else ""
+        rows.append(f'<div class="rag-row"><span class="rag {s["status"]}">{s["status"]}</span>'
+                    f'<div><div class="rag-label">{esc(s["label"])}</div>{note}</div></div>')
+    return sub(partial("shared/status.html"), {"rows": "\n".join(rows)})
+
+
+def steps_html(steps: list) -> str:
+    lis = []
+    for s in steps:
+        if isinstance(s, dict):
+            d = f'<div class="step-desc">{rich(s["description"])}</div>' if s.get("description") else ""
+            lis.append(f'<li><div class="step-title">{rich(s["title"])}</div>{d}</li>')
+        else:
+            lis.append(f'<li><div class="step-title">{rich(s)}</div></li>')
+    return sub(partial("shared/steps.html"), {"items": "\n".join(lis)})
+
+
+def defs_html(terms: list) -> str:
+    body = "\n".join(f"<dt>{esc(d['term'])}</dt><dd>{rich(d['definition'])}</dd>" for d in terms)
+    return sub(partial("shared/defs.html"), {"terms": body})
+
+
+def contact_html(block: dict) -> str:
+    parts = []
+    if block.get("lead"):
+        parts.append(f'<p class="body contact-lead">{rich(block["lead"])}</p>')
+    cards = []
+    for c in block["contacts"]:
+        bits = [f"<h3>{esc(c['name'])}</h3>"]
+        if c.get("role"):
+            bits.append(f"<p>{esc(c['role'])}</p>")
+        if c.get("email"):
+            bits.append(f'<p><a href="mailto:{esc(c["email"])}">{esc(c["email"])}</a></p>')
+        if c.get("phone"):
+            bits.append(f"<p>{esc(c['phone'])}</p>")
+        cards.append('<div class="card">' + "".join(bits) + "</div>")
+    parts.append('<div class="grid">' + "\n".join(cards) + "</div>")
+    return "\n".join(parts)
+
+
+def feature_html(block: dict, base_dir: Path) -> str:
+    fig = figure_html(block, base_dir)
+    text = "".join(f'<p class="body">{rich(p)}</p>' for p in block["paragraphs"])
+    text = f"<div>{text}</div>"
+    fig = f"<div>{fig}</div>"
+    cols = (fig, text) if block.get("image_side") == "left" else (text, fig)
+    return f'<div class="two-col">\n{cols[0]}\n{cols[1]}\n</div>'
+
+
 def sub_block(spec: dict, charts: ChartBook, base_dir: Path) -> str:
     t = spec["type"]
     if t == "text":
@@ -668,9 +909,25 @@ def block_body(block: dict, charts: ChartBook, base_dir: Path) -> str:
     """The inner content of a body block — shared verbatim by deck slides and
     report sections so both formats stay one design system."""
     t = block["type"]
+    if t == "callout":                       # heading becomes the box label, not an <h2>
+        return callout_html(block)
     parts = [heading_html(block)] if (block.get("heading") or block.get("note")) else []
     if t == "bullets":
         parts.append(bullets_list(block["items"]))
+    elif t == "agenda":
+        parts.append(agenda_html(block["items"]))
+    elif t == "team":
+        parts.append(team_html(block["people"], base_dir))
+    elif t == "status":
+        parts.append(status_html(block["statuses"]))
+    elif t == "contact":
+        parts.append(contact_html(block))
+    elif t == "steps":
+        parts.append(steps_html(block["steps"]))
+    elif t == "definitions":
+        parts.append(defs_html(block["terms"]))
+    elif t == "feature":
+        parts.append(feature_html(block, base_dir))
     elif t == "kpi":
         parts.append(kpi_row(block["kpis"]))
     elif t == "cards":
@@ -851,13 +1108,32 @@ REQUIRED_FIELDS = {
     "two-col": "heading, left, right", "text": "heading, paragraphs", "quote": "quote",
     "timeline": "heading, milestones", "comparison": "heading, left+right {title, items}",
     "image": "src", "closing": "heading",
+    "agenda": "heading, items", "callout": "text", "team": "heading, people",
+    "status": "heading, statuses", "contact": "heading, contacts",
+    "steps": "heading, steps", "feature": "heading, src, paragraphs",
+    "definitions": "heading, terms",
 }
 
 
-def scaffold_doc(fmt: str) -> dict:
+def scaffold_doc(fmt: str, minimal: bool = False) -> dict:
     """A ready-to-edit skeleton — replace every value, delete blocks you don't
-    need, duplicate ones you need more of. Cheaper to fill than reading examples."""
+    need, duplicate ones you need more of. Cheaper to fill than reading examples.
+    minimal=True emits the smallest useful document (meta + opener + bullets +
+    closing) for short updates and lowest token cost."""
     kpi = {"label": "", "value": "", "delta": ""}
+    if minimal:
+        blocks = [
+            {"type": "bullets", "heading": "", "items": ["", "", ""]},
+            {"type": "closing", "heading": "", "lead": ""},
+        ]
+        if fmt == "deck":
+            blocks.insert(0, {"type": "section", "heading": "", "note": ""})
+        return {
+            "format": fmt,
+            "style": "boardroom",
+            "meta": {"title": "", "eyebrow": "", "lead": "", "author": "", "date": ""},
+            ("slides" if fmt == "deck" else "sections"): blocks,
+        }
     blocks = [
         {"type": "bullets", "heading": "", "note": "", "items": ["", "", ""]},
         {"type": "kpi", "heading": "", "kpis": [dict(kpi), dict(kpi), dict(kpi)]},
@@ -910,8 +1186,12 @@ def list_catalog() -> None:
         print(f"  {t:11} required: {REQUIRED_FIELDS[t]:35} optional: {', '.join(optional)}")
     print("  kpis entries: {label, value, delta?, down?}   cards entries: {heading, text, big?, accent?}")
     print("  milestones entries: {title, label?, description?, done?}   bullet items: str or {text, sub?}")
+    print("  people entries: {name, role?, photo?, email?, note?}   statuses entries: {label, status: green|amber|red, note?}")
+    print("  contacts entries: {name, role?, email?, phone?}   steps: str or {title, description?}   terms: {term, definition}")
+    print(f"  callout styles: {', '.join(CALLOUT_KINDS)} (heading overrides the label)")
     print(f"Two-col sub-blocks: {', '.join(SUB_TYPES)}")
-    print(f"Chart types:        {', '.join(CHART_TYPES)}  (or raw {{plotly:{{data,layout}}}})")
+    print(f"Chart types:        {', '.join(CHART_TYPES)}  (or raw {{plotly:{{data,layout}}}} — "
+          "passthrough keeps its authored colors; no theme restyle. All charts are static snapshots.)")
     print(f"\nBrand packs: {', '.join(brands) or '(none found)'}  "
           "(client packs: pass a path; inline: a 'branding' object in the content JSON or --logo)")
     print(f"\nExamples: {SKILL_ROOT / 'examples'}")
@@ -935,14 +1215,21 @@ def main() -> None:
                     help="Check the content JSON (fields, types, chart specs) without building")
     ap.add_argument("--scaffold", choices=("deck", "report"),
                     help="Emit a skeleton content JSON to edit (with --out, writes the file)")
+    ap.add_argument("--minimal", action="store_true",
+                    help="With --scaffold: smallest skeleton (meta + opener + bullets + closing)")
+    ap.add_argument("--lite", action="store_true",
+                    help="Deliberate CDN-linked build (~tiny file, needs internet at view time) "
+                         "instead of the self-contained default")
     ap.add_argument("--list", action="store_true", help="Show formats, block types, and brands")
     args = ap.parse_args()
 
+    if args.lite and args.inline_plotly:
+        ap.error("--lite and --inline-plotly are opposites — pick one")
     if args.list:
         list_catalog()
         return
     if args.scaffold:
-        text = json.dumps(scaffold_doc(args.scaffold), indent=2, ensure_ascii=False)
+        text = json.dumps(scaffold_doc(args.scaffold, args.minimal), indent=2, ensure_ascii=False)
         if args.out:
             Path(args.out).write_text(text + "\n", encoding="utf-8")
             print(f"Scaffold written to {args.out} — fill every value, delete unused blocks, "
@@ -963,16 +1250,19 @@ def main() -> None:
     except json.JSONDecodeError as e:
         sys.exit(f"{content_path} is not valid JSON: {e}")
 
-    errors = validate_content(doc)
+    errors, warnings = validate_content(doc)
     if errors:
         print(f"Content validation FAILED ({len(errors)} problem(s)):")
         for e in errors:
             print(f"  - {e}")
         sys.exit(2)
+    for w in warnings:
+        print(f"WARNING: {w}")
     if args.validate_only:
         n_blocks = len(doc.get("slides") or doc.get("sections") or [])
         print(f"Content OK: {doc['format']} '{doc['meta']['title']}', {n_blocks} blocks "
-              f"({', '.join(sorted({b['type'] for b in (doc.get('slides') or doc.get('sections'))}))})")
+              f"({', '.join(sorted({b['type'] for b in (doc.get('slides') or doc.get('sections'))}))})"
+              + (f" — {len(warnings)} warning(s) above" if warnings else ""))
         return
 
     missing = missing_assets()
@@ -1014,10 +1304,13 @@ def main() -> None:
                   "skill folder and re-run with --inline-plotly before offline delivery.")
         else:
             vendor_plotly.inline(out, None)
+    elif args.lite:
+        print("LITE build: Plotly loads from the pinned CDN — small file, but charts need "
+              "internet at view time. Use --inline-plotly instead for offline/CSP-safe delivery.")
     else:
         print("NOTE: Plotly loads from the CDN. Before delivery run "
               f"`python scripts/build_html.py --content {content_path} --out {out} --inline-plotly` "
-              "or `python scripts/vendor_plotly.py --inline <file>`.")
+              "(or --lite to ship the small CDN-linked file deliberately).")
 
     print("Next: python scripts/validate_html.py " + str(out) + "  (then a vision pass in both themes)")
 
