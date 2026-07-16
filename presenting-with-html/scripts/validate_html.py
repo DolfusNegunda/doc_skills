@@ -42,6 +42,25 @@ CSS_CLASS = re.compile(r'\.(-?[_a-zA-Z][_a-zA-Z0-9-]*)')
 DATA_SAMPLE = re.compile(r'<[a-zA-Z][^>]*\bdata-sample\b')
 # Classes toggled/created by the standard shell JS rather than authored in markup.
 JS_MANAGED_CLASSES = {"active", "down", "show", "dot"}
+# A <script> body this large is a vendored library (inlined Plotly ~4.7MB), not
+# authored code — its internals (shader comments carry TODO/FIXME) must not trip
+# the placeholder scan.
+VENDORED_SCRIPT_MIN = 50_000
+SCRIPT_BLOCK = re.compile(r"<script\b[^>]*>(.*?)</script>", re.S | re.I)
+
+
+def _without_vendored_scripts(text: str) -> tuple[str, int]:
+    """Blank the bodies of vendored-library <script> blocks; keep authored ones."""
+    n = 0
+
+    def repl(m):
+        nonlocal n
+        if len(m.group(1)) >= VENDORED_SCRIPT_MIN:
+            n += 1
+            return "<script></script>"
+        return m.group(0)
+
+    return SCRIPT_BLOCK.sub(repl, text), n
 
 
 def detect_format(html: str) -> str:
@@ -147,7 +166,12 @@ def check_html(raw: str) -> tuple[list[str], list[str], dict]:
              "version (the shells use 2.35.2) or inline the library.")
 
     # ---- Content hygiene (scan raw text incl. comments) ----
-    leftovers = sorted(set(m.group(0) for m in PLACEHOLDERS.finditer(raw)))
+    # Vendored libraries (an inlined Plotly) legitimately contain TODO/FIXME in
+    # their own comments — blank those script bodies so only authored content is
+    # scanned. Validation therefore works the same before and after --inline-plotly.
+    scannable, n_vendored = _without_vendored_scripts(raw)
+    checks["vendored_scripts_skipped"] = n_vendored
+    leftovers = sorted(set(m.group(0) for m in PLACEHOLDERS.finditer(scannable)))
     checks["placeholders"] = leftovers
     if leftovers:
         errors.append(f"Leftover placeholder/boilerplate text: {leftovers}")
@@ -212,8 +236,16 @@ def _check_report(html, need, want, checks):
     # ---- Print / PDF ----
     need("print_styles", re.search(r"@media\s+print", html) is not None,
          "No @media print block — long-form reports must be printable / PDF-clean.")
-    want("no_horizontal_overflow", "overflow:hidden" not in html.replace(" ", "") or "overflow-x" in html,
-         "Body may be locked to a single viewport (overflow:hidden) — reports should scroll.")
+    # Only a lock on the PAGE (an html/body rule, or inline on <body>) blocks
+    # scrolling; overflow:hidden on cards/figures/chart panels is normal clipping.
+    css = "\n".join(re.findall(r"<style[^>]*>(.*?)</style>", html, re.S | re.I))
+    body_locked = any(
+        re.search(r"(?:^|[\s,}])(?:html|body)\s*(?:,[^{]*)?$", sel.strip(), re.I)
+        and re.search(r"overflow(?:-y)?\s*:\s*hidden", rule, re.I)
+        for sel, rule in re.findall(r"([^{}]+)\{([^{}]*)\}", css)
+    ) or re.search(r"<body[^>]*style\s*=\s*['\"][^'\"]*overflow(?:-y)?\s*:\s*hidden", html, re.I)
+    want("no_horizontal_overflow", not body_locked,
+         "The page itself sets overflow:hidden on html/body — a report must scroll.")
 
 
 def main():

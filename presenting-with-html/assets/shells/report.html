@@ -232,6 +232,11 @@
   (function initTheme() {
     let t = '{{ default_theme }}';
     try { t = localStorage.getItem('report-theme') || '{{ default_theme }}'; } catch (e) {}
+    /* QA hook: ?theme=dark|light forces a theme (not persisted) for screenshots */
+    try {
+      const forced = new URLSearchParams(location.search).get('theme');
+      if (forced === 'dark' || forced === 'light') t = forced;
+    } catch (e) {}
     root.setAttribute('data-theme', t);
     document.getElementById('themeToggle').textContent = t === 'dark' ? '☀ Light' : '☾ Dark';
   })();
