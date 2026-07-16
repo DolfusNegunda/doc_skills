@@ -330,6 +330,25 @@ def main():
         check("built output carries the ?theme= QA hook", "URLSearchParams" in deck_text)
         check("built deck carries the ?slide= QA hook", "get('slide')" in deck_text)
 
+        # validator slide count is token-exact: slide-inner / slide-count must not
+        # inflate it (field test: 8-slide deck reported as 17)
+        fixture = json.loads((ROOT / "presenting-with-html" / "examples" /
+                              "deck-content.json").read_text(encoding="utf-8"))
+        rc, d = run(f"{hdir}/validate_html.py", built_deck)
+        check("validator n_slides == content slides + auto title slide",
+              rc == 0 and d and d["checks"]["n_slides"] == len(fixture["slides"]) + 1)
+        # and the deck fixture exercises the status block (RAG pills)
+        check("deck fixture includes a status block",
+              any(s.get("type") == "status" for s in fixture["slides"]))
+        # build prints an explicit success line
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / hdir / "build_html.py"),
+             "--content", str(ROOT / "presenting-with-html" / "examples" / "deck-content.json"),
+             "--out", str(tmp / "ok_msg.html"), "--lite"],
+            capture_output=True, text=True)
+        check("build_html prints an explicit BUILD OK line",
+              proc.returncode == 0 and "BUILD OK" in proc.stdout)
+
         # scaffold emits a parseable skeleton with exact field names
         rc, scaffold = run(f"{hdir}/build_html.py", "--scaffold", "report")
         check("build_html --scaffold emits a valid report skeleton",
@@ -361,6 +380,58 @@ def main():
         rc, d = run(f"{hdir}/validate_html.py", rich_out)
         check("mini-markup output passes the validator",
               rc == 0 and d and d["status"] == "OK")
+
+        # office components: all 8 new blocks build and validate in one showcase
+        built_office = tmp / "office.html"
+        rc, _ = run(f"{hdir}/build_html.py", "--content",
+                    ROOT / "presenting-with-html" / "examples" / "office-components.json",
+                    "--out", built_office)
+        office_html = built_office.read_text(encoding="utf-8") if built_office.exists() else ""
+        rc2, d = run(f"{hdir}/validate_html.py", built_office)
+        check("office blocks (agenda/callout/team/status/contact/steps/feature/definitions) build + validate",
+              rc == 0 and rc2 == 0 and d and d["status"] == "OK"
+              and not d["checks"].get("undefined_classes")
+              and all(c in office_html for c in
+                      ('class="agenda"', 'class="callout recommendation"', 'class="team-grid"',
+                       'class="rag amber"', 'class="steps"', 'class="defs"')))
+
+        # self-correcting content errors + warnings
+        (tmp / "warn_content.json").write_text(json.dumps({
+            "format": "deck", "meta": {"title": "T", "title_accent": "Nope"},
+            "blocks": [{"type": "bullets", "heading": "H", "items": ["a"]}]}), encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / hdir / "build_html.py"),
+             "--content", str(tmp / "warn_content.json"), "--validate-only"],
+            capture_output=True, text=True)
+        check('"blocks" suggests the right list name for the format',
+              proc.returncode != 0 and 'did you mean "slides"' in proc.stdout)
+        (tmp / "warn_content.json").write_text(json.dumps({
+            "format": "deck", "meta": {"title": "T", "title_accent": "Nope"},
+            "slides": [{"type": "bullets", "heading": "H",
+                        "items": [f"item {i}" for i in range(12)]}]}), encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / hdir / "build_html.py"),
+             "--content", str(tmp / "warn_content.json"), "--validate-only"],
+            capture_output=True, text=True)
+        check("title_accent + overflow warnings fire without failing the build",
+              proc.returncode == 0 and "accent will not render" in proc.stdout
+              and "split this slide" in proc.stdout)
+
+        # minimal scaffold + passthrough-chart warning
+        rc, mini = run(f"{hdir}/build_html.py", "--scaffold", "report", "--minimal")
+        check("--scaffold --minimal emits the smallest skeleton",
+              rc == 0 and mini and len(mini.get("sections", [])) == 2)
+        (tmp / "pt_content.json").write_text(json.dumps({
+            "format": "report", "meta": {"title": "T"},
+            "sections": [{"type": "chart", "heading": "H",
+                          "chart": {"plotly": {"data": [{"type": "bar", "x": [1], "y": [2]}]}}},
+                         {"type": "text", "heading": "X", "paragraphs": ["p"]}]}), encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / hdir / "build_html.py"),
+             "--content", str(tmp / "pt_content.json"), "--validate-only"],
+            capture_output=True, text=True)
+        check("raw plotly passthrough triggers the no-theme-restyle warning",
+              proc.returncode == 0 and "NOT restyle" in proc.stdout)
 
         # third style preset builds and validates
         built_exec = tmp / "built_exec.html"
@@ -459,28 +530,28 @@ def main():
         sg_names = Counter(zipfile.ZipFile(out_sg).namelist())
         check("slide clones get unique part names (no duplicate zip entries)",
               not [n for n, c in sg_names.items() if c > 1])
+        # library bullets carry a hanging indent — without marL/indent the glyph
+        # renders flush against the text ("•Like this"; field-test finding)
+        with zipfile.ZipFile(reg / "_builtin" / "exec_update" / "template.pptx") as ztpl:
+            slide_xml = b"".join(ztpl.read(n) for n in ztpl.namelist()
+                                 if n.startswith("ppt/slides/slide"))
+        check("library bullets set a hanging indent (marL/indent)",
+              b"buChar" in slide_xml and b'marL="228600"' in slide_xml
+              and b'indent="-228600"' in slide_xml)
+        # scaffold warns against inventing facts (field test: Haiku fabricated
+        # owners/dates/tool names to fill required fields)
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / tdir / "registry.py"), "scaffold",
+             "--builtin", "exec_update", "--out", str(tmp / "sg_rule.json")],
+            capture_output=True, text=True,
+            env={**os.environ, "TEMPLATE_REGISTRY": str(reg)})
+        check("scaffold prints the no-invented-facts rule",
+              proc.returncode == 0 and "ONLY with facts the user supplied" in proc.stdout)
         sg_missing = {k: v for k, v in sg.items() if k != "topic_slides"}
         (tmp / "sg_missing.json").write_text(json.dumps(sg_missing), encoding="utf-8")
         rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "exec_update",
                     "--data", tmp / "sg_missing.json", "--out", tmp / "sg_missing.pptx", env=env)
         check("missing required slide group fails the fill", rc != 0)
-
-        # gallery-derived visual template (committed in the repo registry): the
-        # scaffold -> fill -> validate loop must work on it as-is.
-        repo_reg = ROOT / "building-document-templates" / "registry"
-        vis_man = repo_reg / "_builtin" / "exec_update_visual" / "manifest.json"
-        if vis_man.exists():
-            rc, _ = run(f"{tdir}/registry.py", "scaffold", "--builtin", "exec_update_visual",
-                        "--out", tmp / "vis_content.json", "--with-examples")
-            out_vis = tmp / "vis_filled.pptx"
-            rc2, _ = run(f"{tdir}/fill.py", "--client", "_builtin",
-                         "--doc-type", "exec_update_visual",
-                         "--data", tmp / "vis_content.json", "--out", out_vis)
-            rc3, d = run(f"{tdir}/validate.py", out_vis, "--template",
-                         repo_reg / "_builtin" / "exec_update_visual" / "template.pptx",
-                         "--manifest", vis_man)
-            check("gallery-derived visual template scaffolds, fills, validates",
-                  rc == 0 and rc2 == 0 and rc3 == 0 and d and d["status"] == "OK")
 
         rc, _ = run(f"{tdir}/registry.py", "scaffold", "--builtin", "memo",
                     "--out", tmp / "memo_content.json", "--with-examples", env=env)

@@ -192,6 +192,45 @@
   p a, li a, .card a, td a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; }
   code { font-family:ui-monospace,Consolas,monospace; font-size:.88em;
          background:rgba(127,127,127,.16); padding:1px 6px; border-radius:5px; }
+  /* ---- office components: agenda, callout, team, status/RAG, steps, definitions ---- */
+  ol.agenda, ol.steps { list-style:none; counter-reset:n; margin-top:18px; padding:0; }
+  ol.agenda li, ol.steps li { counter-increment:n; position:relative;
+    padding:11px 0 11px 58px; border-bottom:1px solid var(--glass-border); font-size:1.05rem; }
+  ol.agenda li::before, ol.steps li::before { content:counter(n, decimal-leading-zero);
+    position:absolute; left:0; top:9px; font-weight:700; color:var(--accent); font-size:1.05rem; }
+  .step-title { font-weight:600; }
+  .step-desc, ol.agenda .sub { color:var(--muted); font-size:.92rem; margin-top:3px; }
+  .callout { margin-top:20px; padding:18px 22px; background:var(--card-bg);
+    border:1px solid var(--glass-border); border-left:4px solid var(--accent); border-radius:12px; }
+  .callout-label { font-size:.72rem; letter-spacing:.12em; text-transform:uppercase;
+    font-weight:700; color:var(--accent); margin-bottom:6px; }
+  .callout p { margin:0; font-size:1.05rem; }
+  .callout.takeaway, .callout.recommendation, .callout.info { border-left-color:var(--accent); }
+  .callout.action, .callout.warning { border-left-color:#DC2626; }
+  .callout.action .callout-label, .callout.warning .callout-label { color:#DC2626; }
+  .team-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
+    gap:16px; margin-top:18px; }
+  .person { background:var(--card-bg); border:1px solid var(--glass-border);
+    border-radius:14px; padding:20px 16px; text-align:center; }
+  .avatar { width:64px; height:64px; border-radius:50%; margin:0 auto 10px; display:flex;
+    align-items:center; justify-content:center; font-weight:700; font-size:1.25rem;
+    background:var(--accent); color:#fff; overflow:hidden; }
+  .avatar img { width:100%; height:100%; object-fit:cover; }
+  .person-name { font-weight:700; }
+  .person-role { color:var(--muted); font-size:.9rem; margin-top:2px; }
+  .person-note { font-size:.85rem; margin-top:6px; color:var(--muted); overflow-wrap:anywhere; }
+  .rag-list { margin-top:18px; }
+  .rag-row { display:flex; align-items:baseline; gap:14px; padding:11px 0;
+    border-bottom:1px solid var(--glass-border); }
+  .rag { flex:none; font-size:.7rem; font-weight:700; letter-spacing:.08em; padding:3px 12px;
+    border-radius:999px; color:#fff; text-transform:uppercase; }
+  .rag.green { background:#15803D; } .rag.amber { background:#B45309; } .rag.red { background:#DC2626; }
+  .rag-label { font-weight:600; }
+  .rag-note { color:var(--muted); font-size:.92rem; margin-top:2px; }
+  dl.defs { margin-top:18px; }
+  dl.defs dt { font-weight:700; margin-top:14px; color:var(--accent); }
+  dl.defs dd { margin:4px 0 0; }
+  .contact-lead { margin-top:14px; }
 {{ style_css }}</style>
 </head>
 <body>

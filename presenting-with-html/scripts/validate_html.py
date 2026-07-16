@@ -189,7 +189,10 @@ def _check_deck(html, need, want, checks):
     # ---- Slide deck structure ----
     need("deck", 'class="deck"' in html or "class='deck'" in html,
          "No .deck container — deck format must be a slide deck, not a scrolling page.")
-    n_slides = len(re.findall(r'class="[^"]*\bslide\b', html))
+    # Token-exact count: `\bslide\b` alone also matches slide-inner /
+    # slide-count (the hyphen is a word boundary) and inflates the number.
+    n_slides = sum(1 for m in re.finditer(r'class="([^"]*)"', html)
+                   if "slide" in m.group(1).split())
     checks["n_slides"] = n_slides
     need("slides", n_slides >= 2, f"Found {n_slides} .slide sections; need at least 2.")
     need("active_slide", re.search(r'class="[^"]*\bslide\b[^"]*\bactive\b', html) is not None,

@@ -60,7 +60,8 @@ GLOSSARY (the repo's moving parts):
 - content.json: the ONLY file you author for a fill or an HTML build.
 - Brand pack: a folder with brand.json (+ logo) injected at build time — brands/README.md.
   Client packs live outside the repo, passed by path.
-- Style preset (HTML): boardroom (dark glass) or clean (light corporate, print-ready).
+- Style preset (HTML): boardroom (dark glass), clean (light corporate, print-ready), or
+  executive (serif editorial, annual-report look).
 - Vision QA: render the output and LOOK at every page/slide before delivering. Mandatory.
 ══════════════════════════════════════════════════════════════════════════════════
 
@@ -91,6 +92,11 @@ GLOSSARY (the repo's moving parts):
    fits, FILL it (scaffold -> fill -> validate -> render); write authoring code only when
    nothing fits. For HTML, NEVER copy-edit or append to a template file: write the content
    JSON and run presenting-with-html's build_html.py, which owns the page shell.
+7. NEVER INVENT FACTS TO FILL A FIELD. Owner names, dates, deadlines, forecasts, dollar
+   figures, extra risks/sections the user never mentioned — do not make them up, however
+   plausible. Leave optional slides/fields out, use generic wording ("owner TBC"), or ask.
+   If the user explicitly asks for placeholder values, include them but mark each one
+   visibly as a placeholder. Invented specifics in a business document read as facts.
 ════════════════════════════════════════════════════════════════════════════════
 
 WHEN A USER GIVES YOU A DOCUMENT TO REUSE/TEMPLATIZE:
@@ -133,8 +139,10 @@ GOVERNANCE & SAFETY:
   or deleting a saved template).
 
 ENVIRONMENT:
-- Ensure: python-docx, python-pptx, pymupdf, pillow. Repo scripts live under
-  [REPO_ROOT]/building-document-templates/scripts/. If [REPO_ROOT] was not filled in,
+- Ensure: python-docx, python-pptx, pymupdf, pillow. The Office engine lives under
+  [REPO_ROOT]/building-document-templates/scripts/; the HTML skill has its OWN scripts
+  under [REPO_ROOT]/presenting-with-html/scripts/ (build_html.py, validate_html.py,
+  render_screenshots.py) — each SKILL.md gives its exact paths. If [REPO_ROOT] was not filled in,
   discover it yourself: it is the directory that contains the skills you were given
   (locate any SKILL.md and go up one level).
 - Save templates to TEMPLATE_REGISTRY="[TEMPLATE_REGISTRY]" so they persist and are

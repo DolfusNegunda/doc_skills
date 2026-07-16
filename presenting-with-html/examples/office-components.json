@@ -1,0 +1,101 @@
+{
+  "format": "report",
+  "style": "clean",
+  "meta": {
+    "title": "Project Atlas — Steering Committee Pack",
+    "title_accent": "Project Atlas",
+    "eyebrow": "Monthly steering · July 2026",
+    "lead": "Where the programme stands, what needs a decision, and who owns what next.",
+    "author": "PMO",
+    "date": "16 July 2026"
+  },
+  "sections": [
+    {
+      "type": "agenda",
+      "heading": "Today's agenda",
+      "items": [
+        {"text": "Programme status", "sub": "RAG by workstream"},
+        {"text": "Key decision: environment strategy", "sub": "Recommendation attached"},
+        "Delivery process refresher",
+        "Team changes and contacts"
+      ]
+    },
+    {
+      "type": "status",
+      "heading": "Programme status",
+      "note": "RAG by workstream, versus last month.",
+      "statuses": [
+        {"label": "Data migration", "status": "green", "note": "Wave 2 completed ahead of plan."},
+        {"label": "Integration build", "status": "amber", "note": "Two interfaces slipped a sprint — recovery plan agreed."},
+        {"label": "Change & training", "status": "red", "note": "Trainer hiring blocked; decision needed today."},
+        {"label": "Cutover readiness", "status": "green"}
+      ]
+    },
+    {
+      "type": "callout",
+      "style": "recommendation",
+      "text": "Approve the **single shared staging environment** — it removes the two-week integration bottleneck at a cost of $8k/month, and can be decommissioned after cutover."
+    },
+    {
+      "type": "steps",
+      "heading": "How a change lands",
+      "note": "The delivery process, end to end.",
+      "steps": [
+        {"title": "Raise", "description": "Change request with impact estimate."},
+        {"title": "Assess", "description": "Architecture + PMO review within 5 working days."},
+        {"title": "Approve", "description": "Steering sign-off above the $25k threshold."},
+        {"title": "Deliver", "description": "Scheduled into the next sprint train."},
+        {"title": "Verify", "description": "UAT evidence attached before closure."}
+      ]
+    },
+    {
+      "type": "feature",
+      "heading": "Cutover architecture at a glance",
+      "src": "sample-figure.png",
+      "alt": "Cutover architecture diagram",
+      "caption": "Target-state flow, v1.3.",
+      "image_side": "right",
+      "paragraphs": [
+        "The cutover runs source and target in parallel for one accounting period, with the reconciliation layer comparing balances nightly.",
+        "Rollback is possible until the *final* reconciliation sign-off — after that the source system becomes read-only."
+      ]
+    },
+    {
+      "type": "definitions",
+      "heading": "Terms used in this pack",
+      "terms": [
+        {"term": "Cutover", "definition": "The switch from the legacy system to the new platform, including the parallel-run period."},
+        {"term": "Wave", "definition": "A migration batch — one region's data moved and reconciled as a unit."},
+        {"term": "RAG", "definition": "Red / Amber / Green status against plan."}
+      ]
+    },
+    {
+      "type": "team",
+      "heading": "Who is delivering this",
+      "people": [
+        {"name": "Thandi Nkosi", "role": "Programme Director", "email": "thandi@example.com"},
+        {"name": "Marco Ruiz", "role": "Integration Lead", "note": "On-site Tue–Thu"},
+        {"name": "Ayesha Khan", "role": "Change & Training"},
+        {"name": "Ben Osei", "role": "Data Migration Lead"}
+      ]
+    },
+    {
+      "type": "contact",
+      "heading": "Questions between steerings",
+      "lead": "Raise anything urgent directly — otherwise the PMO inbox is triaged daily.",
+      "contacts": [
+        {"name": "PMO", "email": "atlas-pmo@example.com"},
+        {"name": "Thandi Nkosi", "role": "Programme Director", "email": "thandi@example.com", "phone": "+00 00 000 0000"}
+      ]
+    },
+    {
+      "type": "closing",
+      "heading": "Decisions requested today",
+      "lead": "One decision unblocks the red workstream; one keeps us ahead of plan.",
+      "cards": [
+        {"heading": "Approve", "text": "Shared staging environment, $8k/month until cutover."},
+        {"heading": "Endorse", "text": "External trainer contract to unblock Change & Training."}
+      ]
+    }
+  ]
+}

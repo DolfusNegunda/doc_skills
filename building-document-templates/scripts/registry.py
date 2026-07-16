@@ -217,6 +217,9 @@ def cmd_scaffold(args):
     if args.with_examples:
         print("\nNOTE: example values must be EDITED — an unedited example fill fails the "
               "source-residue check in validate.py (by design).")
+    print("\nRULE: fill values ONLY with facts the user supplied. Never invent owners, "
+          "dates, numbers, or extra slides to fill a field — omit optional entries, use "
+          "generic wording ('owner TBC'), or ask the user.")
     print(f"\nNext: {_fill_hint(manifest)}")
 
 
