@@ -40,6 +40,20 @@ comes from a brand pack in [../brands/](../brands/README.md) and is applied at b
 Never author a full HTML page from scratch, and never append content to a template file —
 if a layout truly doesn't fit the block types, use the bespoke path at the end of this file.
 
+## Requirements — check before you start
+- **Use the whole skill folder** (`scripts/`, `assets/`, `schema/`, `examples/`). The builder
+  assembles from `assets/shells/` + `assets/components/`; with a partial checkout it stops
+  and says which files are missing.
+- The repo-root [../brands/](../brands/README.md) directory is **optional**: without it the
+  builder falls back to embedded neutral defaults (a client pack passed by *path* still works).
+- **Never edit the scripts, shells, or components to get past an error** — a path failure or
+  missing asset means your checkout or invocation is wrong, not the engine. Fix that, or stop
+  and say what is missing. A patched engine invalidates every guarantee this skill makes.
+- Field names in `content.json` are **exact**. Run `build_html.py --list` for the per-block
+  field reference, and `build_html.py --content content.json --validate-only` to check the
+  JSON before building — unknown fields are rejected with a did-you-mean suggestion, so one
+  fix cycle is enough.
+
 ## Workflow (default: build from content)
 ```
 Progress:
@@ -53,12 +67,14 @@ Progress:
 - [ ] 7. Deliver self-contained: rebuild with --inline-plotly (or vendor_plotly.py --inline out.html)
 ```
 
-**Step 0 — Choose the format and style.** Pick from the user's request; **if unstated, ask**
-("slide deck to click through, or a long-form report to scroll/print?"). Signals: "deck /
-slides / present / walk the board through it" → deck. "report / document / detailed / read /
-print / PDF / share the write-up" → report. When still unsure, default to **deck** for
-≤ ~7 messages of mostly-visual content, **report** for detailed/reference material or
-anything printed. Style: "premium / boardroom / impressive / dark" → `boardroom`;
+**Step 0 — Choose the format and style.** Signals: "deck / slides / present / walk the board
+through it" → deck. "report / document / detailed / read / print / PDF / email / share the
+write-up" → report. **When the request carries clear signals, proceed and state the choice**
+("Building this as a long-form printable report since you said report + printable") — don't
+burn a round-trip confirming the obvious. **Ask only when genuinely ambiguous** ("slide deck
+to click through, or a long-form report to scroll/print?"). When still unsure, default to
+**deck** for ≤ ~7 messages of mostly-visual content, **report** for detailed/reference
+material or anything printed. Style: "premium / boardroom / impressive / dark" → `boardroom`;
 "corporate / conservative / client-facing / printable / clean" → `clean`. Default boardroom
 for decks; for reports that will be printed or sent to a client, prefer `clean`.
 
@@ -83,6 +99,9 @@ concentrate, how did it change, what to do next. A beautiful deliverable with no
   `left`/`right` item lists; `quote` is a pull-quote with optional attribution.
 - Keep deck slides to one message: ~5 bullets, ≤4 KPIs, one chart. Push dense tables into a
   report or an appendix slide.
+- Field names are exact (`items` not `bullets`, `heading` not `title`, `milestones` not
+  `events`). Check cheaply before building:
+  `python scripts/build_html.py --content content.json --validate-only`.
 
 **Step 4 — Build.** Branding, three ways (all optional — with none, placeholders collapse
 and the neutral default renders):
@@ -103,14 +122,25 @@ The builder validates the JSON first and prints precise, fixable errors.
 nothing after `</html>`, unique IDs, no live `data-sample` content, classes actually
 defined), both theme token sets, persisted toggle, theme-aware charts, no leftover
 placeholders; deck nav / report TOC + print styles. Fix every error; **ship only on
-`"status": "OK"`.** A CDN-Plotly warning is expected until step 7.
+`"status": "OK"`.** A CDN-Plotly warning is expected until step 7. The validator blanks
+vendored-library `<script>` bodies before the placeholder scan, so it gives the same verdict
+before and after `--inline-plotly` — run it whenever you like.
 
 **Step 6 — QA by vision (required before delivery).** The validator reads structure, not
-looks. Open the file in a browser and view every slide/section in **both** dark and light. A
-headless screenshot works for an automated look (Chromium/Edge `--headless=new
---screenshot`), then Read the image — confirm the premium feel, KPIs and charts scale in,
-text has contrast in both themes, and nothing overflows (deck) or has a broken TOC/print
-layout (report).
+looks. Open the file in a browser and view every slide/section in **both** dark and light.
+
+*Theme contract (for scripted QA):* boardroom defaults **dark**, clean defaults **light**;
+the toggle persists to `localStorage` key `deck-theme` / `report-theme`; append
+**`?theme=dark`** or **`?theme=light`** to the file URL to force a theme for a screenshot
+(works with `file:///…out.html?theme=light`, not persisted).
+
+*Browser ladder:* use whatever renderer exists — Chromium/Edge/Chrome
+`--headless=new --screenshot` (one invocation per screenshot), or Playwright if installed —
+then Read the image. **If no browser can run in the environment, do not silently skip this
+gate**: deliver only with an explicit caveat that the vision pass could not be performed,
+and never hack the environment or the scripts to fake it. Confirm the premium feel, KPIs and
+charts scale in, text has contrast in both themes, and nothing overflows (deck) or has a
+broken TOC/print layout (report).
 
 **Step 7 — Self-contained delivery (required before sharing).** Charts load Plotly from a
 CDN while authoring, but an emailed/SharePoint/air-gapped file must not depend on the
@@ -133,6 +163,11 @@ environment blocks the CDN.)
   the historical failure mode is a second document appended after `</html>` with invented
   class names and duplicate IDs. The validator now fails all of that; the builder makes it
   impossible.
+- **Patching the builder/validator scripts** to get past a path error, missing asset, or
+  validation failure. A field-test model did exactly this — the fix was fetching the full
+  skill folder, not editing the engine. If blocked, stop and report what's missing.
+- Guessing content field names (`bullets`/`title`/`events`) instead of running `--list` and
+  `--validate-only` first.
 - Forcing the wrong format: a dense reference report crammed into slides, or a click-through
   presentation flattened into one long scroll.
 - Overstuffed slides — walls of bullets or three charts on one slide. Split them.

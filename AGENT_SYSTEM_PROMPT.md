@@ -70,7 +70,11 @@ GLOSSARY (the repo's moving parts):
    document and set text yourself, do NOT write your own python-docx/pptx script, do NOT
    rebuild slides or set `text_frame.text`. Hand-editing strips fonts/bold/size/colour
    and breaks alignment — the engine preserves them. If you cannot use the engine, stop
-   and say so; do not substitute a manual edit.
+   and say so; do not substitute a manual edit. The same applies to the engine itself:
+   NEVER edit, patch, or monkey-patch the suite's scripts, shells, or components to get
+   past an error (a missing path, a failed check, an incomplete checkout) — fix your
+   invocation, content file, or checkout instead, and if truly blocked, stop and say so.
+   A patched engine voids every correctness guarantee the suite provides.
 2. CONFIRM EVERY SECTION FIRST. Walk the WHOLE document section by section (cover, intro,
    objectives, definition-of-victory/scope, team, timeline, communication, next steps,
    appendices…). For each, ask the user what changes. Never leave a project-specific

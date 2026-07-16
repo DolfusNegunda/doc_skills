@@ -294,6 +294,41 @@ def main():
                     "--out", tmp / "never.html")
         check("build_html rejects an unknown block type", rc != 0)
 
+        # pre-build content check + did-you-mean on wrong field names
+        rc, _ = run(f"{hdir}/build_html.py", "--content",
+                    ROOT / "presenting-with-html" / "examples" / "deck-content.json",
+                    "--validate-only")
+        check("build_html --validate-only passes the deck fixture", rc == 0)
+        (tmp / "alias_content.json").write_text(json.dumps({
+            "format": "deck", "meta": {"title": "X"},
+            "slides": [{"type": "bullets", "title": "H", "bullets": ["a"]}]}),
+            encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / hdir / "build_html.py"),
+             "--content", str(tmp / "alias_content.json"), "--validate-only"],
+            capture_output=True, text=True)
+        check("build_html suggests exact field names (did-you-mean)",
+              proc.returncode != 0 and 'did you mean "items"' in proc.stdout
+              and 'did you mean "heading"' in proc.stdout)
+
+        # partial checkout: the skill folder alone (no repo-root brands/) still builds
+        import shutil
+        iso = tmp / "iso" / "presenting-with-html"
+        shutil.copytree(ROOT / "presenting-with-html" / "scripts", iso / "scripts")
+        shutil.copytree(ROOT / "presenting-with-html" / "assets", iso / "assets")
+        proc = subprocess.run(
+            [sys.executable, str(iso / "scripts" / "build_html.py"),
+             "--content", str(ROOT / "presenting-with-html" / "examples" / "deck-content.json"),
+             "--out", str(tmp / "iso_deck.html")],
+            capture_output=True, text=True)
+        check("build_html falls back to embedded brand without repo brands/",
+              proc.returncode == 0 and (tmp / "iso_deck.html").exists()
+              and "embedded" in proc.stdout)
+
+        # QA theme-forcing hook ships in the built output
+        check("built output carries the ?theme= QA hook",
+              "URLSearchParams" in built_deck.read_text(encoding="utf-8"))
+
         print("presenting-with-html/validate_html.py (integrity hardening)")
         boilerplate = ROOT / "presenting-with-html" / "assets" / "deck-template.html"
         rc, d = run(f"{hdir}/validate_html.py", boilerplate)
@@ -316,6 +351,25 @@ def main():
         rc, d = run("presenting-with-html/scripts/validate_html.py", bad_html)
         check("html validator fails a non-deck / placeholder page",
               rc == 1 and d and d["status"] == "FAIL")
+
+        # false-positive regressions (field-tested): TODO/FIXME inside a vendored-size
+        # script must not trip the placeholder scan, and overflow:hidden on a non-body
+        # element must not raise the scroll-lock warning.
+        report_text = built_report.read_text(encoding="utf-8")
+        vendored = report_text.replace(
+            "</body>", "<script>/* FIXME TODO */" + "x" * 60000 + "</script></body>", 1)
+        (tmp / "vendored.html").write_text(vendored, encoding="utf-8")
+        rc, d = run(f"{hdir}/validate_html.py", tmp / "vendored.html")
+        check("validator ignores TODO/FIXME inside vendored-size scripts",
+              rc == 0 and d and d["status"] == "OK"
+              and d["checks"].get("vendored_scripts_skipped") == 1)
+        check("overflow warning scoped: clipped figures don't flag",
+              d and d["checks"].get("no_horizontal_overflow") is True)
+        locked = report_text.replace("</style>", "body{overflow:hidden}</style>", 1)
+        (tmp / "locked.html").write_text(locked, encoding="utf-8")
+        rc, d = run(f"{hdir}/validate_html.py", tmp / "locked.html")
+        check("validator still warns when html/body itself is scroll-locked",
+              d and d["checks"].get("no_horizontal_overflow") is False)
 
         print("built-in template libraries: generate -> scaffold -> fill -> validate")
         rc, _ = run("building-powerpoint-decks/scripts/build_template_library.py",
