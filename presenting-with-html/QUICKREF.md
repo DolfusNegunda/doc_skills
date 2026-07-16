@@ -12,7 +12,7 @@ python scripts/validate_html.py out.html
 python scripts/render_screenshots.py out.html --out-dir shots       # no browser -> follow printed disclosure
 ```
 
-**Top level:** `format` (deck|report) · `style` (boardroom|clean|executive) · `meta` · `slides` (deck) / `sections` (report) — never `blocks`. Optional: `brand`, `branding` {logo, colors, footer}.
+**Top level:** `format` (deck|report) · `style` (boardroom = dark exec pitch · clean = light corporate/print · executive = serif annual-report) · `meta` · `slides` (deck) / `sections` (report) — never `blocks`. Optional: `brand`; `"branding": {"logo": "path.png"}` puts the logo on the title slide/hero in BOTH formats (also takes colors, footer).
 
 **meta:** title, title_accent, eyebrow, lead, author, date, kpis[≤4 {label, value, delta?, down?}]. Generates the title slide/hero — don't add one.
 
@@ -38,4 +38,4 @@ python scripts/render_screenshots.py out.html --out-dir shots       # no browser
 | definitions | heading, terms | {term, definition} |
 | contact / closing | heading | contacts {name, role?, email?, phone?} / lead?, cards? |
 
-**Gotchas:** (1) `title_accent` renders ONLY as an exact substring of `title`. (2) Deck uses `slides`, report uses `sections` — `blocks` is nothing. (3) **Never Read the built HTML back** (~5–6 MB inlined) — verify via `validate_html.py` JSON + grep-style checks only. (4) Raw `plotly` passthrough keeps authored colors (no theme restyle); all charts are static build-time snapshots.
+**Gotchas:** (1) `title_accent` renders ONLY as an exact substring of `title`. (2) Deck uses `slides`, report uses `sections` — `blocks` is nothing. (3) **Never Read the built HTML back** (~5–6 MB inlined) — verify via `validate_html.py` JSON + grep-style checks only. (4) Raw `plotly` passthrough keeps authored colors (no theme restyle); all charts are static build-time snapshots. (5) Image/logo `src` paths resolve relative to content.json (absolute paths also work); files are embedded base64 at build time.

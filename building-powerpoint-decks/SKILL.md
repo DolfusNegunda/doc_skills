@@ -17,19 +17,12 @@ Produce a deck that is visually consistent, readable from the back of a room, an
 built on masters so it can be restyled or extended without manual cleanup.
 
 ## Step 0 — Fill a built-in template before you build (decision gate)
-The suite ships fill-ready deck templates in the document-template registry, in two
-visual families:
+The suite ships fill-ready deck templates in the document-template registry:
+`exec_update`, `project_kickoff`, `proposal`, `report_out` — clean, brand-pack-driven,
+**expandable** decks built by `build_template_library.py` (repeatable topic/finding/
+evidence slides via slide groups; see below).
 
-- **Generated** (`exec_update`, `project_kickoff`, `proposal`, `report_out`) — clean,
-  brand-pack-driven decks built by `build_template_library.py`.
-- **Designer** (`exec_update_visual`, `project_kickoff_visual`, `proposal_visual`,
-  `report_out_visual`, `project_status_visual`) — curated from the professional
-  infographic layout gallery (`assets/layout-gallery.pptx`): agency-quality covers,
-  agenda chevrons, challenge/roadmap/pros-cons diagrams. Every text slot is a field;
-  the neutral CLIENT-LOGO chips are **image slots** (`client_logo*` fields) swapped in
-  one fill. Prefer these when the audience expects polished visual slides.
-
-If the requested deck matches either family, **do not author slides at all**; run the
+If the requested deck matches one of these, **do not author slides at all**; run the
 deterministic fill path (safe for any model, however small):
 
 ```bash
@@ -70,9 +63,12 @@ text/picture slot counts, size hints), **render your shortlist and look**
 (`render_pptx.py` — the index tells you what a slide is for; only vision tells you it
 fits), then copy the gallery, delete everything else, and type into the placeholders —
 never rebuild the diagrams. Avoid slides whose art encodes quantities (fixed donut/bar
-percentages) unless your numbers match the art. New fill-ready templates are curated from it with
-[scripts/derive_gallery_templates.py](scripts/derive_gallery_templates.py) (see its
-header; the same script re-derives everything from a client's own gallery deck).
+percentages) unless your numbers match the art. Fill-ready templates CAN be curated
+from it with [scripts/derive_gallery_templates.py](scripts/derive_gallery_templates.py),
+but gallery-derived templates are **fixed-layout** (no repeatable slide groups) — a live
+field test showed small models pick them over the expandable library and cram content;
+the generated library above is the fill path. Curate from the gallery only for a
+deliberate, fixed-shape deck.
 
 ## Core principle: adapt the starter deck, don't reinvent it
 [assets/starter-template.pptx](assets/starter-template.pptx) is a complete, styled,

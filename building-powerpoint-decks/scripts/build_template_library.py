@@ -137,8 +137,11 @@ def _txt(slide, st, left, top, width, height, text, size, *, color=None, bold=Fa
 
 def _bullet_para(p, char="•"):
     """Give a paragraph a real PowerPoint bullet (survives fill.py's list expansion,
-    which deep-copies the paragraph XML per item)."""
+    which deep-copies the paragraph XML per item). Without a hanging indent the
+    glyph renders flush against the text ("•Like this"), so set marL/indent too."""
     pPr = p._p.get_or_add_pPr()
+    pPr.set("marL", "228600")      # 0.25" left margin...
+    pPr.set("indent", "-228600")   # ...hanging, so the bullet sits in the gutter
     buFont = pPr.makeelement(qn("a:buFont"), {"typeface": "Arial", "pitchFamily": "34", "charset": "0"})
     buChar = pPr.makeelement(qn("a:buChar"), {"char": char})
     pPr.append(buFont)

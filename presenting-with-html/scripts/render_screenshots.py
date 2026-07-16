@@ -204,12 +204,23 @@ def main() -> None:
                 failed.append(f"_tall_{stem}_{theme}.png")
                 print(f"  FAIL  full-page capture ({theme})")
 
+    # Headless browsers sometimes flush the PNG only after our wait window —
+    # reclassify those as late (usable) rather than failed, so a usable capture
+    # never reads as a hard failure.
+    late = [n for n in failed
+            if (out_dir / n).exists() and (out_dir / n).stat().st_size > 1024]
+    failed = [n for n in failed if n not in late]
+    for n in late:
+        ok.append(n)
+        print(f"  late  {n} — PNG landed after the wait window; usable, inspect it like the others")
+
     print(f"\n{len(ok)} screenshot(s) -> {out_dir}  "
           f"(format {fmt}, full {default_theme} + {args.second_theme} {other_theme})")
     print("Now Read each PNG and check: contrast in both themes, charts drawn, "
           "nothing overflowing or misaligned, branding present/absent as intended.")
     if failed:
-        sys.exit(f"{len(failed)} capture(s) failed: {', '.join(failed)}")
+        sys.exit(f"{len(failed)} capture(s) failed (no usable PNG on disk — retry these "
+                 f"URLs or raise --timeout): {', '.join(failed)}")
 
 
 if __name__ == "__main__":

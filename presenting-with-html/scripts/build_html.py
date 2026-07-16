@@ -1312,7 +1312,12 @@ def main() -> None:
               f"`python scripts/build_html.py --content {content_path} --out {out} --inline-plotly` "
               "(or --lite to ship the small CDN-linked file deliberately).")
 
-    print("Next: python scripts/validate_html.py " + str(out) + "  (then a vision pass in both themes)")
+    size_mb = out.stat().st_size / 1e6
+    print(f"BUILD OK ({size_mb:.1f} MB). Next: python scripts/validate_html.py {out}  "
+          "(then a vision pass in both themes)")
+    if args.inline_plotly and size_mb > 4:
+        print("Size note: most of that is the inlined Plotly runtime — if delivery size "
+              "matters more than offline viewing, rebuild with --lite.")
 
 
 if __name__ == "__main__":

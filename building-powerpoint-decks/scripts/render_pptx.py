@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 
@@ -65,16 +66,35 @@ def main() -> None:
         sys.exit(f"file not found: {pptx}")
     outdir = Path(args.out).resolve() if args.out else pptx.with_suffix(pptx.suffix + ".render")
 
-    try:
-        rendered = render_with_powerpoint(pptx, outdir, args.width)
-    except ImportError:
-        sys.exit(
-            "PowerPoint COM path needs pywin32 on Windows with Office installed.\n"
-            "Fallback (LibreOffice): soffice --headless --convert-to pdf "
-            f'"{pptx}"\nthen rasterize the PDF (e.g. pdftoppm -png deck.pdf slide).'
-        )
-    except Exception as exc:  # COM/render failure
-        sys.exit(f"render failed via PowerPoint COM: {exc}")
+    rendered: list[str] = []
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        try:
+            rendered = render_with_powerpoint(pptx, outdir, args.width)
+            break
+        except ImportError:
+            sys.exit(
+                "PowerPoint COM path needs pywin32 on Windows with Office installed.\n"
+                "Fallback (LibreOffice): soffice --headless --convert-to pdf "
+                f'"{pptx}"\nthen rasterize the PDF (e.g. pdftoppm -png deck.pdf slide).'
+            )
+        except Exception as exc:  # COM automation is single-instance and flaky
+            last_exc = exc
+            if attempt < 2:
+                print(f"PowerPoint COM attempt {attempt + 1} failed ({exc}) — PowerPoint "
+                      "may be busy with another render; retrying in 5s...")
+                time.sleep(5)
+    if not rendered and last_exc is not None:
+        print(f"render failed via PowerPoint COM after 3 attempts: {last_exc}")
+        print("\nThe vision gate CANNOT run without a renderer. Do NOT substitute a "
+              "programmatic text read of the deck — it cannot see overflow, overlap, "
+              "autofit shrink, or broken charts.")
+        print("\nREQUIRED DISCLOSURE — deliver only with this text attached:")
+        print("  The mandatory visual QA pass could not be performed in this environment")
+        print("  (PowerPoint/LibreOffice rendering unavailable). Structural validation")
+        print("  passed, but layout, text fit, and chart rendering have NOT been visually")
+        print("  verified - please open the deck and check each slide before distributing.")
+        sys.exit(3)
 
     report = {
         "file": str(pptx),

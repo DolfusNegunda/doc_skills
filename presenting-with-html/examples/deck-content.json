@@ -99,6 +99,16 @@
       ]
     },
     {
+      "type": "status",
+      "heading": "Workstream health",
+      "note": "RAG status reviewed at the monthly steering meeting.",
+      "statuses": [
+        { "label": "Enterprise renewals", "status": "green", "note": "Both contracts signed; expansion scope in delivery." },
+        { "label": "Customer success recovery", "status": "amber", "note": "NPS stabilising; detractor-account plan starts October." },
+        { "label": "Hiring pipeline", "status": "red", "note": "Two senior delivery roles open past 60 days — escalated to exec." }
+      ]
+    },
+    {
       "type": "comparison",
       "heading": "Where we stand vs where we planned",
       "note": "The January plan against the Q3 close.",
