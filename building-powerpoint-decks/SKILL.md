@@ -53,10 +53,13 @@ Continue below **only** when no template fits (bespoke structure, unusual format
 [assets/layout-gallery.pptx](assets/layout-gallery.pptx) is a de-branded, 147-slide
 professional layout library — one showcase slide per layout (covers, agendas, processes,
 roadmaps, funnels, pyramids, comparisons, maps…), content in empty placeholders, neutral
-CLIENT-LOGO chips where an org logo goes. For a bespoke deck: **copy it, delete the
-slides you don't need, and type into the placeholders** — never rebuild the diagrams.
-Avoid slides whose art encodes quantities (fixed donut/bar percentages) unless your
-numbers match the art. New fill-ready templates are curated from it with
+CLIENT-LOGO chips where an org logo goes. For a bespoke deck: **shortlist slides from
+[assets/layout-gallery-index.md](assets/layout-gallery-index.md)** (per-slide category,
+text/picture slot counts, size hints), **render your shortlist and look**
+(`render_pptx.py` — the index tells you what a slide is for; only vision tells you it
+fits), then copy the gallery, delete everything else, and type into the placeholders —
+never rebuild the diagrams. Avoid slides whose art encodes quantities (fixed donut/bar
+percentages) unless your numbers match the art. New fill-ready templates are curated from it with
 [scripts/derive_gallery_templates.py](scripts/derive_gallery_templates.py) (see its
 header; the same script re-derives everything from a client's own gallery deck).
 
