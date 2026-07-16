@@ -7,12 +7,12 @@ BRAND-SWAPPABLE look and one example of each core layout (title, section divider
 content, two-column, chart/evidence, closing). Copy it, replace the content, keep the
 geometry, palette, and type scale.
 
-Brand swap (the org's "branding is data, not code" rule): change PALETTE and FONT
-below and re-run — every slide re-skins from these values, exactly like swapping the
---accent tokens in the HTML template. Or drop the org's real .potx over the theme.
+Brand swap (the org's "branding is data, not code" rule): the palette and fonts come
+from the SAME brand pack as the fill-ready library (build_template_library.py), so the
+starter and the _builtin decks are always one design. Re-run with --brand to re-skin.
 
-    python scripts/build_starter_template.py            # -> assets/starter-template.pptx
-    python scripts/build_starter_template.py --out x.pptx
+    python scripts/build_starter_template.py                       # default brand pack
+    python scripts/build_starter_template.py --brand path/to/pack --out x.pptx
 
 Type scale respects deck-anatomy minimums (title >=32, body >=24, never <18).
 Requires python-pptx.
@@ -29,7 +29,8 @@ from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Emu, Inches, Pt
 
-# ---- Brand tokens (swap these to re-skin the whole deck) ----
+# ---- Brand tokens — resolved from a brand pack in main(); these are the
+# defaults (identical to brands/default) so importing the module stays cheap.
 PALETTE = {
     "bg":      RGBColor(0xFF, 0xFF, 0xFF),  # slide background
     "ink":     RGBColor(0x0F, 0x17, 0x2A),  # primary text (deep navy)
@@ -40,7 +41,23 @@ PALETTE = {
     "hair":    RGBColor(0xE2, 0xE8, 0xF0),  # hairlines / grey series
     "panel":   RGBColor(0xF1, 0xF5, 0xF9),  # light panel fill
 }
-FONT = "Segoe UI"  # safe on Windows/Office; swap for the brand font
+FONT = "Segoe UI"
+
+
+def apply_brand(name_or_path: str | None) -> None:
+    """Point PALETTE/FONT at a brand pack — the same design source the fill-ready
+    library uses, so the starter always matches the _builtin decks."""
+    global FONT
+    from build_template_library import load_brand, rgb
+    brand = load_brand(name_or_path)
+    c = brand["colors"]
+    PALETTE.update({
+        "bg": rgb(c["bg"]), "ink": rgb(c["ink"]), "muted": rgb(c["muted"]),
+        "accent": rgb(c["primary"]), "accent2": rgb(c["accent"]),
+        "accent3": rgb(c.get("accent_2", c["accent"])),
+        "hair": rgb(c["hairline"]), "panel": rgb(c["panel"]),
+    })
+    FONT = brand["fonts"]["body"]
 
 # 16:9 canvas + a shared grid
 SW, SH = Inches(13.333), Inches(7.5)
@@ -120,8 +137,9 @@ def _title(slide, text, *, left, top, width, height, size, color, bold=True, spa
     return ph
 
 
-def _accent_bar(slide, top=MARGIN, color=PALETTE["accent"]):
-    _rect(slide, MARGIN, top, Inches(0.9), Inches(0.14), color)
+def _accent_bar(slide, top=MARGIN, color=None):
+    _rect(slide, MARGIN, top, Inches(0.9), Inches(0.14),
+          color if color is not None else PALETTE["accent"])
 
 
 def slide_title(prs):
@@ -255,7 +273,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     default = Path(__file__).resolve().parent.parent / "assets" / "starter-template.pptx"
     ap.add_argument("--out", default=str(default), help="output .pptx path")
+    ap.add_argument("--brand", default="default",
+                    help="Brand pack name under brands/ (or a path) — same source as the library")
     args = ap.parse_args()
+    apply_brand(args.brand)
     build(Path(args.out))
 
 

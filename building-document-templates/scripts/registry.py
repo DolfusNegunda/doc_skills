@@ -171,9 +171,19 @@ def cmd_scaffold(args):
             f = next((x for x in manifest["fields"] if x["name"] == col), {})
             item[col] = f.get("example", "") if args.with_examples else ""
         content[g["name"]] = [item]
+    for g in manifest.get("slide_groups", []):
+        item = {}
+        for f in g["fields"]:
+            ftype = f.get("type", "text")
+            if args.with_examples and f.get("example"):
+                item[f["name"]] = [f["example"]] if ftype == "list" else f["example"]
+            else:
+                item[f["name"]] = [] if ftype == "list" else ""
+        content[g["name"]] = [item]
 
     out = args.out
     from pathlib import Path
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
     Path(out).write_text(json.dumps(content, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Scaffold written: {out}  ({len(content)} keys)")
     print("\nFill guidance (field -> how to fill):")
@@ -185,6 +195,25 @@ def cmd_scaffold(args):
         print(f"  {f['name']:26} {kind:6}{req}  {f.get('guidance', '')}")
     for g in manifest.get("row_groups", []):
         print(f"  {g['name']:26} rows    one object per table row; keys: {', '.join(g['columns'])}")
+    for g in manifest.get("slide_groups", []):
+        mn, mx = g.get("min", 1), g.get("max")
+        span = f"{mn}–{mx}" if mx else f"{mn}+"
+        print(f"  {g['name']:26} slides  one object per SLIDE ({span} slides; 0 = slide removed "
+              f"if optional). {g.get('purpose', '')}")
+        for f in g["fields"]:
+            req = "" if f.get("required", True) else "  [optional]"
+            print(f"      .{f['name']:22} {f.get('type', 'text'):6}{req}  {f.get('guidance', '')}")
+    if manifest.get("slides"):
+        groups_by_name = {g["name"]: g for g in manifest.get("slide_groups", [])}
+        print("\nSlide guide (what each slide is for):")
+        for s in manifest["slides"]:
+            mark = ""
+            if s.get("group"):
+                g = groups_by_name.get(s["group"], {})
+                mn, mx = g.get("min", 1), g.get("max")
+                mark = (f"  [optional — omit '{s['group']}' to drop]" if mn == 0
+                        else f"  [repeatable ×{mn}–{mx or '∞'} via '{s['group']}']")
+            print(f"  {s['index'] + 1:>2}. {s.get('name', ''):20} {s.get('purpose', '')}{mark}")
     if args.with_examples:
         print("\nNOTE: example values must be EDITED — an unedited example fill fails the "
               "source-residue check in validate.py (by design).")

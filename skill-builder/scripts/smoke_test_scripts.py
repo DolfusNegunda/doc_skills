@@ -427,6 +427,44 @@ def main():
         dman = reg / "_builtin" / "memo" / "manifest.json"
         check("docx library builder registers memo", rc == 0 and dman.exists())
 
+        # slide groups: the ONE topic slide expands per entry (byte-copies of the
+        # designer slide, so theme/layout come along); the optional evidence slide
+        # drops when its list is empty; a required group with no entries fails.
+        rc, _ = run(f"{tdir}/registry.py", "scaffold", "--builtin", "exec_update",
+                    "--out", tmp / "sg_content.json", "--with-examples", env=env)
+        sg = json.loads((tmp / "sg_content.json").read_text(encoding="utf-8"))
+        check("scaffold emits slide-group entry lists",
+              rc == 0 and isinstance(sg.get("topic_slides"), list)
+              and isinstance(sg.get("evidence_slides"), list))
+        sg = json.loads(json.dumps(sg).replace("Acme Mining", "Initech")
+                        .replace("Jane Mokoena", "Pat Lee").replace("Sipho Dlamini", "Sam Cole"))
+        sg["evidence_slides"] = []
+        sg["topic_slides"] = [
+            {"topic_heading": f"Topic {i}", "topic_points": [f"Point {i}a", f"Point {i}b"]}
+            for i in (1, 2, 3)]
+        (tmp / "sg_filled.json").write_text(json.dumps(sg), encoding="utf-8")
+        out_sg = tmp / "sg_deck.pptx"
+        rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "exec_update",
+                    "--data", tmp / "sg_filled.json", "--out", out_sg, env=env)
+        rc2, d = run(f"{tdir}/validate.py", out_sg, "--template",
+                     reg / "_builtin" / "exec_update" / "template.pptx", "--manifest", pman)
+        sg_texts = [p.text for sl in _Prs(str(out_sg)).slides for sh in sl.shapes
+                    if sh.has_text_frame for p in sh.text_frame.paragraphs]
+        check("slide group expands per entry and drops the optional slide",
+              rc == 0 and rc2 == 0 and d and d["status"] == "OK"
+              and d["checks"]["n_slides"] == 8
+              and all(f"Topic {i}" in sg_texts for i in (1, 2, 3)))
+        # delete+clone must not collide on slide partnames (duplicate zip entries)
+        from collections import Counter
+        sg_names = Counter(zipfile.ZipFile(out_sg).namelist())
+        check("slide clones get unique part names (no duplicate zip entries)",
+              not [n for n, c in sg_names.items() if c > 1])
+        sg_missing = {k: v for k, v in sg.items() if k != "topic_slides"}
+        (tmp / "sg_missing.json").write_text(json.dumps(sg_missing), encoding="utf-8")
+        rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "exec_update",
+                    "--data", tmp / "sg_missing.json", "--out", tmp / "sg_missing.pptx", env=env)
+        check("missing required slide group fails the fill", rc != 0)
+
         # gallery-derived visual template (committed in the repo registry): the
         # scaffold -> fill -> validate loop must work on it as-is.
         repo_reg = ROOT / "building-document-templates" / "registry"

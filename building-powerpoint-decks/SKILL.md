@@ -36,12 +36,23 @@ deterministic fill path (safe for any model, however small):
 cd ../building-document-templates
 python scripts/registry.py list                                        # what exists
 python scripts/registry.py scaffold --builtin exec-update --out content.json
-# edit content.json (field-by-field guidance is printed by scaffold)
+# edit content.json (scaffold prints per-field guidance AND a slide guide:
+# what each slide is for, which are repeatable, which are optional)
 python scripts/fill.py --client _builtin --doc-type exec_update --data content.json --out out.pptx
 python scripts/validate.py out.pptx --template registry/_builtin/exec_update/template.pptx \
     --manifest registry/_builtin/exec_update/manifest.json             # must be OK
 python ../building-powerpoint-decks/scripts/render_pptx.py out.pptx    # vision pass, every slide
 ```
+
+**Templates are expandable, not fixed.** A manifest `slide_group` marks a slide as a
+repeating unit: its scaffold key is a **list of objects, one object per slide**. The
+engine clones the designer slide byte-for-byte per entry — same layout, theme, and art —
+so more content means more slides of the same kind, never a crammed slide. Match content
+to slide shape: one topic (heading + 3–6 bullets) per `topic_slides` entry; one chart
+image per `evidence_slides` entry. Optional groups (`min: 0`, e.g. evidence visuals)
+disappear entirely when their list is empty or the key is omitted — no orphan
+placeholder slide. Never paste two topics into one entry, and never clone slides by
+hand — the entry count IS the slide count.
 
 The library is generated per brand pack by
 [scripts/build_template_library.py](scripts/build_template_library.py) (see

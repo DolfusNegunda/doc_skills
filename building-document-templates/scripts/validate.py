@@ -71,7 +71,7 @@ def docx_report(path: Path, template: Path | None, source_terms):
     return errors, checks
 
 
-def pptx_report(path: Path, template: Path | None, source_terms):
+def pptx_report(path: Path, template: Path | None, source_terms, slide_groups=None):
     from pptx import Presentation
     prs = Presentation(str(path))
     texts = [C.para_text(p) for p in C.iter_pptx_paragraphs(prs)]
@@ -95,8 +95,19 @@ def pptx_report(path: Path, template: Path | None, source_terms):
     if template and template.exists():
         tprs = Presentation(str(template))
         t_slides = len(tprs.slides)
-        if checks["n_slides"] != t_slides:
-            errors.append(f"Slide count changed: template {t_slides} -> output {checks['n_slides']}")
+        groups = slide_groups or []
+        if groups:
+            # Repeatable/optional slides: each group's ONE template slide may
+            # legitimately become min..max slides in the output.
+            lo = t_slides + sum(g.get("min", 1) - 1 for g in groups)
+            hi = t_slides + sum((g.get("max") or 99) - 1 for g in groups)
+            checks["expected_slides"] = f"{lo}-{hi}"
+            if not (lo <= checks["n_slides"] <= hi):
+                errors.append(f"Slide count {checks['n_slides']} outside the template's "
+                              f"expected range {lo}-{hi} (base {t_slides} + slide_groups).")
+        elif checks["n_slides"] != t_slides:
+            errors.append(f"Slide count changed: template {t_slides} -> output {checks['n_slides']} "
+                          "(if this template has repeatable slide_groups, pass --manifest).")
     elif template:
         errors.append(f"--template not found: {template} (structure check could not run)")
     return errors, checks
@@ -118,14 +129,19 @@ def main():
     template = Path(args.template) if args.template else None
     fmt = C.detect_format(path)
 
-    # Source-residue terms: from --manifest's source_terms and/or --source-terms.
-    source_terms = []
+    # Source-residue terms + slide_groups: from --manifest and/or --source-terms.
+    source_terms, slide_groups = [], []
     if args.manifest and Path(args.manifest).exists():
-        source_terms += C.load_manifest(Path(args.manifest)).get("source_terms", [])
+        man = C.load_manifest(Path(args.manifest))
+        source_terms += man.get("source_terms", [])
+        slide_groups = man.get("slide_groups", [])
     if args.source_terms:
         source_terms += [t.strip() for t in args.source_terms.split(",") if t.strip()]
 
-    errors, checks = (docx_report if fmt == "docx" else pptx_report)(path, template, source_terms)
+    if fmt == "docx":
+        errors, checks = docx_report(path, template, source_terms)
+    else:
+        errors, checks = pptx_report(path, template, source_terms, slide_groups)
     report = {
         "file": str(path),
         "format": fmt,
