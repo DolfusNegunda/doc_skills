@@ -11,7 +11,7 @@
   "changelog": [
     "2026-07-16: generated with brand pack 'default'"
   ],
-  "description": "Universal composable deck: pick ANY mix/order of body slides — agenda, bullets, numbered steps, stat cards, two-col, team, timeline, native charts, tables, image evidence, quote, section dividers. Use when no fixed-shape template fits or the content needs varied visuals.",
+  "description": "Universal composable deck: pick ANY mix/order of body slides — agenda, bullets, numbered steps, stat cards, two-col, team, timeline, native charts, tables, image evidence, quote, section dividers. Use when no preset narrative fits.",
   "fields": [
     {
       "name": "deck_eyebrow",

@@ -200,8 +200,9 @@ def cmd_scaffold(args):
                     row[sf["name"]] = sf.get("example", "") if args.with_examples else ""
                 e[items.get("field", "items")] = [row]
             return e
-        # Scaffold a small representative body; ANY mix/order/count is allowed.
-        picks = list(body["types"])[:3]
+        # Scaffold the template's recommended sequence (or a small sample);
+        # ANY mix/order/count of types is allowed — edit freely.
+        picks = body.get("default") or list(body["types"])[:3]
         content["body"] = [_body_entry(t, body["types"][t]) for t in picks]
 
     out = args.out
@@ -229,8 +230,8 @@ def cmd_scaffold(args):
     if body:
         mn, mx = body.get("min", 1), body.get("max")
         print(f"\nBody ({mn}–{mx or '∞'} slides): \"body\" is an ORDERED list of typed entries — "
-              "one entry per slide, ANY mix and order of these types. The scaffold shows "
-              "3 example entries; add/remove/reorder freely:")
+              "one entry per slide, ANY mix and order of these types. The scaffold emits "
+              "this template's recommended sequence; add/remove/reorder/swap types freely:")
         for tname, tdef in body["types"].items():
             print(f"  {{\"type\": \"{tname}\"}}".ljust(28) + f"  {tdef.get('purpose', '')}")
             for f in tdef.get("fields", []):

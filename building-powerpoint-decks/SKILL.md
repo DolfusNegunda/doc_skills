@@ -17,20 +17,24 @@ Produce a deck that is visually consistent, readable from the back of a room, an
 built on masters so it can be restyled or extended without manual cleanup.
 
 ## Step 0 — Fill a built-in template before you build (decision gate)
-The suite ships fill-ready deck templates in the document-template registry:
+The suite ships fill-ready deck templates in the document-template registry — ALL built
+on one composable visual system: cover + a typed, ORDERED `body` list + closing. Body
+types: agenda, bullets, numbered steps, stat cards, two-col, team, timeline, native
+**chart** built from data, native **table**, image evidence (requires a real file),
+quote, section divider — any mix, any order, entry count = slide count. Charts/tables
+are real editable PowerPoint objects styled from the brand pack; nothing decorative is
+fixed. The templates differ only in their scaffolded DEFAULT sequence:
 
-- **`flex_deck`** — the universal composable deck. Its `body` is an ORDERED list of
-  typed entries (agenda, bullets, numbered steps, stat cards, two-col, team, timeline,
-  native **chart** from data, native **table**, image evidence, quote, section divider)
-  in ANY mix and order — the scaffold prints the full type menu. Charts/tables are real
-  editable PowerPoint objects built from the entry's data, styled from the brand pack.
-  Prefer this whenever the content wants varied visuals or a custom slide sequence.
-- **`exec_update`, `project_kickoff`, `proposal`, `report_out`** — fixed-shape decks
-  for their standard narratives, with repeatable topic/finding/evidence slide groups.
+- **`exec_update`** — QBR/quarterly: stats → section → chart → topics → risks two-col.
+- **`project_kickoff`** — agenda → objectives → approach steps → team → timeline → comms.
+- **`proposal`** — problem → approach steps → scope → team → investment table → quote.
+- **`report_out`** — summary → findings → recommendations (+ image evidence when files exist).
+- **`flex_deck`** — no preset; compose freely when no narrative above fits.
 
-All are brand-pack-driven and built by `build_template_library.py`. If the requested
-deck matches any of these, **do not author slides at all**; run the deterministic fill
-path (safe for any model, however small):
+Pick the closest preset (its scaffold pre-selects the right sequence), then add, remove,
+or reorder body entries to fit the content. If the requested deck matches any of these,
+**do not author slides at all**; run the deterministic fill path (safe for any model,
+however small):
 
 ```bash
 cd ../building-document-templates
