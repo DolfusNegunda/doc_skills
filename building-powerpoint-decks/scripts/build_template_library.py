@@ -380,6 +380,9 @@ SOURCE_TERMS = ["Acme Mining", "Jane Mokoena", "Sipho Dlamini"]
 
 
 def build_exec_update(prs, st, png):
+    """The expandable base deck. Fixed frame (title, KPIs, divider, risks,
+    closing) + two slide GROUPS the fill engine clones per content entry:
+    evidence slides (optional, image slot each) and topic slides (repeatable)."""
     title_slide(prs, st, tag("report_eyebrow"), tag("report_title"),
                 tag("report_subtitle"), tag("author_line"))
     kpi_slide(prs, st, tag("kpi_heading"), [
@@ -389,12 +392,13 @@ def build_exec_update(prs, st, png):
         (tag("kpi4_label"), tag("kpi4_value"), tag("kpi4_delta")),
     ])
     divider_slide(prs, st, "01", tag("section_heading"), tag("section_note"))
-    visual_slide(prs, st, tag("evidence_heading"), tag("evidence_caption"), png)
-    bullets_slide(prs, st, tag("highlights_heading"), tag("highlights"))
+    visual_slide(prs, st, tag("evidence_heading"), tag("evidence_caption"), png)   # group: evidence_slides
+    bullets_slide(prs, st, tag("topic_heading"), tag("topic_points"))              # group: topic_slides
     two_list_slide(prs, st, tag("risks_heading"), "RISKS", tag("risks"),
                    "MITIGATIONS", tag("mitigations"))
     closing_slide(prs, st, "DECISIONS REQUESTED", tag("closing_statement"), tag("next_steps"))
-    return [
+
+    fields = [
         F("report_eyebrow", "EXECUTIVE REVIEW · Q3 2026", "Small uppercase kicker on the title slide: report kind + period."),
         F("report_title", "Q3 2026 Business Update", "The deck's title. Keep under ~8 words."),
         F("report_subtitle", "Performance against target, the drivers behind it, and the decisions we need this quarter.", "One-sentence framing under the title."),
@@ -406,17 +410,39 @@ def build_exec_update(prs, st, png):
         F("kpi4_label", "NPS", "KPI 4 label."), F("kpi4_value", "58", "KPI 4 value."), F("kpi4_delta", "▼ 3", "KPI 4 movement."),
         F("section_heading", "What moved the needle", "Dark section-divider heading."),
         F("section_note", "The drivers behind the quarter — and the drags.", "One muted line under the divider heading."),
-        F("evidence_heading", "Revenue tracked above target from August", "Assertion headline for the evidence visual — state the takeaway, not the chart type."),
-        F("evidence_visual", "", "PNG/JPG path for the main evidence chart (e.g. exported from Plotly/matplotlib at 2x). Swapped into the slide preserving geometry.", type="image", required=False),
-        F("evidence_caption", "Monthly revenue vs plan, $m. Source: finance close, Oct 2026.", "Small caption under the visual: units + source."),
-        F("highlights_heading", "Executive highlights", "Headline over the highlights list."),
-        F("highlights", "Both flagship accounts of Acme Mining renewed multi-year", "3–6 bullets; one message each.", type="list"),
         F("risks_heading", "Top risks and how we contain them", "Headline over the risks/mitigations columns."),
         F("risks", "Key-person dependency on the logistics engagement", "3–5 risk bullets, ranked.", type="list"),
         F("mitigations", "Shadow resourcing in place from October", "One mitigation per risk, same order.", type="list"),
         F("closing_statement", "Approve the Q4 plan: hire ahead of demand and fund the client-success recovery", "The single closing ask, one sentence."),
         F("next_steps", "Two senior delivery hires approved by 31 October — Jane Mokoena", "3–5 decision/next-step bullets with owners and dates.", type="list"),
     ]
+    slide_groups = [
+        {"name": "evidence_slides", "slide_index": 3, "min": 0, "max": 3,
+         "purpose": "Evidence visuals — one chart image per slide. Omit the key (or pass []) for no visual slides at all.",
+         "fields": [
+             F("evidence_heading", "Revenue tracked above target from August", "Assertion headline — state the takeaway, not the chart type."),
+             F("evidence_visual", "", "PNG/JPG path for this slide's chart (e.g. exported from Plotly/matplotlib at 2x). Swapped preserving geometry; omit to keep the placeholder.", type="image", required=False),
+             F("evidence_caption", "Monthly revenue vs plan, $m. Source: finance close, Oct 2026.", "Small caption under the visual: units + source."),
+         ]},
+        {"name": "topic_slides", "slide_index": 4, "min": 1, "max": 6,
+         "purpose": "One topic per slide — highlights, wins, workstream updates, lowlights. Add one entry per topic; each becomes its own slide in the same design.",
+         "fields": [
+             F("topic_heading", "Executive highlights", "This slide's headline — one topic, stated as a message."),
+             F("topic_points", "Both flagship accounts of Acme Mining renewed multi-year", "3–6 bullets for this topic; one message each.", type="list"),
+         ]},
+    ]
+    slides = [
+        {"index": 0, "name": "Title", "purpose": "Cover — eyebrow, title, subtitle, author line."},
+        {"index": 1, "name": "KPI cards", "purpose": "The quarter at a glance: exactly four KPIs (label, value, delta)."},
+        {"index": 2, "name": "Section divider", "purpose": "Dark chapter break into the narrative."},
+        {"index": 3, "name": "Evidence visual", "group": "evidence_slides",
+         "purpose": "Assertion headline + chart image + source caption."},
+        {"index": 4, "name": "Topic bullets", "group": "topic_slides",
+         "purpose": "One message per slide, 3–6 bullets. Use one entry per topic — never cram two topics on one slide."},
+        {"index": 5, "name": "Risks & mitigations", "purpose": "Two ranked columns, one mitigation per risk."},
+        {"index": 6, "name": "Closing / decisions", "purpose": "Single closing ask + next steps with owners and dates."},
+    ]
+    return {"fields": fields, "slide_groups": slide_groups, "slides": slides}
 
 
 def build_project_kickoff(prs, st, png):
@@ -530,16 +556,21 @@ def build_one(name: str, brand: dict, registry: Path, owner: str, created: str) 
     prs = Presentation()
     prs.slide_width = int(SW)
     prs.slide_height = int(SH)
-    fields = builder(prs, st, png)
+    spec = builder(prs, st, png)
+    if isinstance(spec, list):                       # older builders return just fields
+        spec = {"fields": spec, "slide_groups": [], "slides": []}
+    fields = spec["fields"]
+    slide_groups = spec.get("slide_groups", [])
+    slides_meta = spec.get("slides", [])
 
     dest = registry / "_builtin" / name
     dest.mkdir(parents=True, exist_ok=True)
     tpl = dest / "template.pptx"
     prs.save(str(tpl))
 
-    # Wire image-slot fields to their package media part.
+    # Wire image-slot fields (global AND per-group) to their package media part.
     slot = media_part_for(tpl, png)
-    for f in fields:
+    for f in fields + [gf for g in slide_groups for gf in g["fields"]]:
         if f["type"] == "image" and not f["media_part"]:
             f["media_part"] = slot
 
@@ -557,12 +588,17 @@ def build_one(name: str, brand: dict, registry: Path, owner: str, created: str) 
         "description": description,
         "fields": fields,
         "row_groups": [],
+        "slide_groups": slide_groups,
+        "slides": slides_meta,
         "source_terms": SOURCE_TERMS,
     }
     (dest / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False),
                                         encoding="utf-8")
     n_slides = len(prs.slides._sldIdLst)
-    print(f"Registered _builtin/{name}: {n_slides} slides, {len(fields)} fields -> {dest}")
+    n_fields = len(fields) + sum(len(g["fields"]) for g in slide_groups)
+    groups_note = (" (+" + ", ".join(f"{g['name']} ×{g.get('min', 1)}–{g.get('max') or '∞'}"
+                                     for g in slide_groups) + ")") if slide_groups else ""
+    print(f"Registered _builtin/{name}: {n_slides} slides{groups_note}, {n_fields} fields -> {dest}")
     return dest
 
 

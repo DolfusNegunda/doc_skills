@@ -120,6 +120,16 @@ python scripts/render_pages.py out.pptx --out-dir pages/            # vision pas
   makes the fill clone a table's template `<w:tr>` once per data item (real repeating rows),
   where the old list expansion only stacked paragraphs in one cell. `data[group]` is a list
   of dicts keyed by the column fields; an empty list removes the template row (header stays).
+- **Slide expansion (`fill.py`, pptx)** — a `slide_group` in the manifest
+  (`{name, slide_index, min, max, purpose, fields:[field-specs]}`) marks ONE slide as a
+  repeating unit. `data[group]` is a list of dicts; the engine clones the slide
+  byte-for-byte per entry (same layout/background/art/theme — python-pptx `add_slide` on
+  the source layout + `<p:cSld>` deep copy + rel remap) and fills each clone from its
+  entry, including per-instance image slots (each clone gets its OWN image part). An
+  empty list on a `min: 0` group removes the slide; empty on a required group leaves its
+  tags so `validate.py` fails. `validate.py --manifest` widens the slide-count check to
+  the groups' min–max range. Manifest `slides` (per-slide `purpose`, `group`) drives the
+  slide guide that `registry.py scaffold` prints.
 - **Source-residue check (`validate.py`)** — `--source-terms` / manifest `source_terms`
   fails the fill if source-exemplar content (client/project/code/dates/domain terms) survives.
   "No leftover tags" ≠ "successfully reused". Use project-IDENTIFYING terms, not recurring people.

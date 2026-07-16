@@ -114,6 +114,179 @@ def _is_empty(value):
     return value is None or value == "" or value == []
 
 
+# ---------------- PPTX slide groups (repeatable / optional slides) ----------------
+# A manifest slide_group marks ONE slide as a repeating unit:
+#   {"name", "slide_index", "min", "max", "purpose", "fields": [field-specs]}
+# data[name] is a LIST of dicts (one slide per entry). The engine clones the
+# designer slide byte-for-byte per entry — same layout, background, art, theme —
+# and fills each clone from its entry. Zero entries: min 0 removes the slide;
+# a required group keeps its tags so validate.py fails loudly.
+
+def _slide_paragraphs(slide):
+    """Paragraphs of ONE slide (text frames, grouped shapes, table cells)."""
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
+
+    def walk(shapes):
+        for sh in shapes:
+            if sh.shape_type == MSO_SHAPE_TYPE.GROUP:
+                yield from walk(sh.shapes)
+            elif getattr(sh, "has_text_frame", False):
+                yield from sh.text_frame.paragraphs
+            elif getattr(sh, "has_table", False):
+                for row in sh.table.rows:
+                    for cell in row.cells:
+                        yield from cell.text_frame.paragraphs
+
+    yield from walk(slide.shapes)
+
+
+def _sld_el(prs, slide):
+    from pptx.oxml.ns import qn  # noqa: F401  (namespace map side effect)
+    for el in prs.slides._sldIdLst:
+        if int(el.get("id")) == slide.slide_id:
+            return el
+    raise ValueError(f"slide id {slide.slide_id} not in sldIdLst")
+
+
+def delete_pptx_slide(prs, slide):
+    from pptx.oxml.ns import qn
+    el = _sld_el(prs, slide)
+    prs.part.drop_rel(el.get(qn("r:id")))
+    el.getparent().remove(el)
+
+
+def _move_slide_after(prs, dest, anchor):
+    lst = prs.slides._sldIdLst
+    d_el, a_el = _sld_el(prs, dest), _sld_el(prs, anchor)
+    lst.remove(d_el)
+    a_el.addnext(d_el)
+
+
+def clone_pptx_slide(prs, source):
+    """Byte-faithful duplicate of a slide: same layout, background, art, images.
+
+    python-pptx has no public duplicate API. Approach: add_slide() on the SAME
+    layout (correct part scaffolding + theme inheritance), swap in a deep copy of
+    the source's entire <p:cSld> (background + every shape), then re-create the
+    source's relationships on the new part and remap the rIds inside the copied
+    XML (two passes via placeholder tokens so colliding ids can't chain-rewrite).
+    """
+    from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+    from pptx.oxml.ns import qn
+
+    dest = prs.slides.add_slide(source.slide_layout)
+    d_el, s_el = dest._element, source._element
+    d_el.remove(d_el.find(qn("p:cSld")))
+    d_el.insert(0, copy.deepcopy(s_el.find(qn("p:cSld"))))
+    # add_slide() already touched dest.shapes, caching a wrapper around the
+    # spTree we just replaced — drop the caches so fills hit the copied shapes.
+    dest.__dict__.pop("shapes", None)
+    dest.__dict__.pop("placeholders", None)
+
+    mapping = {}
+    for rid, rel in source.part.rels.items():
+        if rel.reltype in (RT.SLIDE_LAYOUT, RT.NOTES_SLIDE):
+            continue
+        new_rid = (dest.part.rels.get_or_add_ext_rel(rel.reltype, rel.target_ref)
+                   if rel.is_external
+                   else dest.part.relate_to(rel.target_part, rel.reltype))
+        mapping[rid] = new_rid
+    tokens = {old: f"__RIDTMP{i}__" for i, old in enumerate(mapping)}
+    for el in d_el.iter():
+        for attr, val in el.attrib.items():
+            if val in tokens:
+                el.set(attr, tokens[val])
+    inverse = {tokens[old]: new for old, new in mapping.items()}
+    for el in d_el.iter():
+        for attr, val in el.attrib.items():
+            if val in inverse:
+                el.set(attr, inverse[val])
+    return dest
+
+
+def _swap_instance_image(slide, media_part, image_path):
+    """Give THIS slide instance its own image: add a new image part and repoint
+    the picture that references `media_part` (clones share the original part, so
+    a package-level media swap would change every clone at once)."""
+    from pptx.oxml.ns import qn
+    p = Path(image_path)
+    if not p.exists():
+        print(f"WARNING: image not found: {p} — slide keeps its placeholder visual.")
+        return False
+    want = "/" + str(media_part).lstrip("/")
+    target_rids = {rid for rid, rel in slide.part.rels.items()
+                   if not rel.is_external and str(rel.target_part.partname) == want}
+    if not target_rids:
+        return False
+    image_part, new_rid = slide.part.get_or_add_image_part(str(p))
+    hit = False
+    for blip in slide._element.iter(qn("a:blip")):
+        if blip.get(qn("r:embed")) in target_rids:
+            blip.set(qn("r:embed"), new_rid)
+            hit = True
+    return hit
+
+
+def expand_slide_groups(prs, groups, data):
+    """Clone/drop whole slides per the manifest's slide_groups; fill each clone
+    from its entry. Returns the set of missing required group/field names."""
+    missing = set()
+    # Descending template index so earlier group indices stay valid while we
+    # insert/delete around later ones.
+    for g in sorted(groups, key=lambda g: g["slide_index"], reverse=True):
+        name = g["name"]
+        entries = data.get(name)
+        if isinstance(entries, dict):
+            entries = [entries]
+        entries = entries or []
+        mn, mx = g.get("min", 1), g.get("max")
+        slides = list(prs.slides)
+        idx = g["slide_index"]
+        if idx >= len(slides):
+            print(f"WARNING: slide group '{name}' points at slide {idx + 1} but the deck "
+                  f"has {len(slides)} slides — group skipped.")
+            continue
+        source = slides[idx]
+
+        if not entries:
+            if mn == 0:
+                delete_pptx_slide(prs, source)   # optional slide, no content -> gone
+            else:
+                missing.add(name)                # tags stay -> validate.py fails loudly
+            continue
+        if mx and len(entries) > mx:
+            print(f"WARNING: slide group '{name}': {len(entries)} entries exceeds max {mx} — "
+                  "building them all; check the rendered deck for pacing.")
+
+        instances, anchor = [source], source
+        for _ in entries[1:]:
+            clone = clone_pptx_slide(prs, source)
+            _move_slide_after(prs, clone, anchor)
+            instances.append(clone)
+            anchor = clone
+
+        for slide, entry in zip(instances, entries):
+            text_fields = [f for f in g["fields"] if f.get("type", "text") != "image"]
+            paras = list(_slide_paragraphs(slide))
+            miss, types = fill_paragraphs(paras, entry, text_fields, _wrap_pptx)
+            missing |= {f"{name}.{m}" for m in miss}
+            paras = list(_slide_paragraphs(slide))   # re-collect after list expansion
+            for f in text_fields:
+                if types[f["name"]] == "list" or f["name"] in miss:
+                    continue
+                val = entry.get(f["name"], "")
+                tag_ = C.placeholder(f["name"])
+                for p in paras:
+                    C.replace_in_paragraph(p, tag_, "" if val is None else str(val))
+            for f in g["fields"]:
+                if f.get("type") != "image":
+                    continue
+                val = entry.get(f["name"])
+                if val and not _swap_instance_image(slide, f.get("media_part", ""), val):
+                    print(f"WARNING: image slot for '{name}.{f['name']}' not found on its slide.")
+    return missing
+
+
 def fill_paragraphs(paragraphs, data, fields, wrap):
     """Apply the manifest's fields to every paragraph.
 
@@ -166,11 +339,18 @@ def render(fmt, template_path, data, manifest, out_path):
     else:
         from pptx import Presentation
         prs = Presentation(str(template_path))
+        # Slide-group expansion FIRST — it clones/drops whole slides and fills
+        # each instance from its own entry, before the global passes run.
+        group_missing = set()
+        if manifest.get("slide_groups"):
+            group_missing = expand_slide_groups(prs, manifest["slide_groups"], data)
         paras = list(C.iter_pptx_paragraphs(prs))
         wrap = _wrap_pptx
         saver = prs
 
     missing, types = fill_paragraphs(paras, data, fields, wrap)
+    if fmt == "pptx":
+        missing |= group_missing
 
     # Text pass (re-collect because list expansion changed the paragraph set).
     if fmt == "docx":
