@@ -382,227 +382,401 @@ def F(name, example, guidance, *, type="text", required=True, media_part=""):
 SOURCE_TERMS = ["Acme Mining", "Jane Mokoena", "Sipho Dlamini"]
 
 
-def build_exec_update(prs, st, png):
-    """The expandable base deck. Fixed frame (title, KPIs, divider, risks,
-    closing) + two slide GROUPS the fill engine clones per content entry:
-    evidence slides (optional, image slot each) and topic slides (repeatable)."""
-    title_slide(prs, st, tag("report_eyebrow"), tag("report_title"),
-                tag("report_subtitle"), tag("author_line"))
-    kpi_slide(prs, st, tag("kpi_heading"), [
-        (tag("kpi1_label"), tag("kpi1_value"), tag("kpi1_delta")),
-        (tag("kpi2_label"), tag("kpi2_value"), tag("kpi2_delta")),
-        (tag("kpi3_label"), tag("kpi3_value"), tag("kpi3_delta")),
-        (tag("kpi4_label"), tag("kpi4_value"), tag("kpi4_delta")),
-    ])
-    divider_slide(prs, st, "01", tag("section_heading"), tag("section_note"))
-    visual_slide(prs, st, tag("evidence_heading"), tag("evidence_caption"), png)   # group: evidence_slides
-    bullets_slide(prs, st, tag("topic_heading"), tag("topic_points"))              # group: topic_slides
-    two_list_slide(prs, st, tag("risks_heading"), "RISKS", tag("risks"),
-                   "MITIGATIONS", tag("mitigations"))
-    closing_slide(prs, st, "DECISIONS REQUESTED", tag("closing_statement"), tag("next_steps"))
+# ---------------- Deck presets (all built on the composable flex body) ----------------
+# One visual system for every deck builtin: cover + 12 designed body types + closing
+# (see _flex_spec below). Each preset differs only in its cover/closing EXAMPLES and
+# its recommended DEFAULT body sequence — the scaffold emits that sequence, and the
+# filler may add/remove/reorder/swap types freely. No fixed decorative imagery:
+# the image type is a required-swap slot, charts/tables are built from data.
 
-    fields = [
-        F("report_eyebrow", "EXECUTIVE REVIEW · Q3 2026", "Small uppercase kicker on the title slide: report kind + period."),
-        F("report_title", "Q3 2026 Business Update", "The deck's title. Keep under ~8 words."),
-        F("report_subtitle", "Performance against target, the drivers behind it, and the decisions we need this quarter.", "One-sentence framing under the title."),
-        F("author_line", "Prepared by Finance & Operations · 15 October 2026", "Author/team and date."),
-        F("kpi_heading", "The quarter at a glance", "Headline over the four KPI cards."),
-        F("kpi1_label", "REVENUE", "KPI 1 label (short, uppercase)."), F("kpi1_value", "$4.82m", "KPI 1 value (big number)."), F("kpi1_delta", "▲ 9% vs Q2", "KPI 1 movement."),
-        F("kpi2_label", "GROSS MARGIN", "KPI 2 label."), F("kpi2_value", "63.4%", "KPI 2 value."), F("kpi2_delta", "▲ 1.2 pts", "KPI 2 movement."),
-        F("kpi3_label", "NEW CLIENTS", "KPI 3 label."), F("kpi3_value", "14", "KPI 3 value."), F("kpi3_delta", "▲ 5", "KPI 3 movement."),
-        F("kpi4_label", "NPS", "KPI 4 label."), F("kpi4_value", "58", "KPI 4 value."), F("kpi4_delta", "▼ 3", "KPI 4 movement."),
-        F("section_heading", "What moved the needle", "Dark section-divider heading."),
-        F("section_note", "The drivers behind the quarter — and the drags.", "One muted line under the divider heading."),
-        F("risks_heading", "Top risks and how we contain them", "Headline over the risks/mitigations columns."),
-        F("risks", "Key-person dependency on the logistics engagement", "3–5 risk bullets, ranked.", type="list"),
-        F("mitigations", "Shadow resourcing in place from October", "One mitigation per risk, same order.", type="list"),
-        F("closing_statement", "Approve the Q4 plan: hire ahead of demand and fund the client-success recovery", "The single closing ask, one sentence."),
-        F("next_steps", "Two senior delivery hires approved by 31 October — Jane Mokoena", "3–5 decision/next-step bullets with owners and dates.", type="list"),
-    ]
-    slide_groups = [
-        {"name": "evidence_slides", "slide_index": 3, "min": 0, "max": 3,
-         "purpose": "Evidence visuals — one chart image per slide. Omit the key (or pass []) for no visual slides at all.",
-         "fields": [
-             F("evidence_heading", "Revenue tracked above target from August", "Assertion headline — state the takeaway, not the chart type."),
-             F("evidence_visual", "", "PNG/JPG path for this slide's chart (e.g. exported from Plotly/matplotlib at 2x). Swapped preserving geometry; omit to keep the placeholder.", type="image", required=False),
-             F("evidence_caption", "Monthly revenue vs plan, $m. Source: finance close, Oct 2026.", "Small caption under the visual: units + source."),
-         ]},
-        {"name": "topic_slides", "slide_index": 4, "min": 1, "max": 6,
-         "purpose": "One topic per slide — highlights, wins, workstream updates, lowlights. Add one entry per topic; each becomes its own slide in the same design.",
-         "fields": [
-             F("topic_heading", "Executive highlights", "This slide's headline — one topic, stated as a message."),
-             F("topic_points", "Both flagship accounts of Acme Mining renewed multi-year", "3–6 bullets for this topic; one message each.", type="list"),
-         ]},
-    ]
-    slides = [
-        {"index": 0, "name": "Title", "purpose": "Cover — eyebrow, title, subtitle, author line."},
-        {"index": 1, "name": "KPI cards", "purpose": "The quarter at a glance: exactly four KPIs (label, value, delta)."},
-        {"index": 2, "name": "Section divider", "purpose": "Dark chapter break into the narrative."},
-        {"index": 3, "name": "Evidence visual", "group": "evidence_slides",
-         "purpose": "Assertion headline + chart image + source caption."},
-        {"index": 4, "name": "Topic bullets", "group": "topic_slides",
-         "purpose": "One message per slide, 3–6 bullets. Use one entry per topic — never cram two topics on one slide."},
-        {"index": 5, "name": "Risks & mitigations", "purpose": "Two ranked columns, one mitigation per risk."},
-        {"index": 6, "name": "Closing / decisions", "purpose": "Single closing ask + next steps with owners and dates."},
-    ]
-    return {"fields": fields, "slide_groups": slide_groups, "slides": slides}
+def _flex_preset(prs, st, png, *, default, eyebrow, title, subtitle, closing):
+    spec = _flex_spec(prs, st, png)
+    spec["body"]["default"] = default
+    ex = {"deck_eyebrow": eyebrow, "deck_title": title, "deck_subtitle": subtitle,
+          "closing_statement": closing}
+    for f in spec["fields"]:
+        if f["name"] in ex:
+            f["example"] = ex[f["name"]]
+    return spec
+
+
+def build_exec_update(prs, st, png):
+    return _flex_preset(
+        prs, st, png,
+        default=["stats", "section", "chart", "bullets", "bullets", "two_col"],
+        eyebrow="EXECUTIVE REVIEW · Q3 2026", title="Q3 2026 Business Update",
+        subtitle="Performance against target, the drivers behind it, and the decisions we need.",
+        closing="Approve the Q4 plan")
 
 
 def build_project_kickoff(prs, st, png):
-    title_slide(prs, st, "PROJECT KICKOFF · " + tag("kickoff_date"), tag("project_name"),
-                tag("project_tagline"), tag("presenter_line"))
-    bullets_slide(prs, st, "Agenda", tag("agenda_items"))
-    bullets_slide(prs, st, "Definition of victory", tag("dov_points"), intro=tag("dov_intro"))
-    bullets_slide(prs, st, "Project deliverables", tag("deliverables"))
-    bullets_slide(prs, st, "Meet the team", tag("team_members"))
-    bullets_slide(prs, st, "Project approach", tag("milestones"), intro=tag("approach_note"), size=18)
-    two_list_slide(prs, st, "How we stay in sync", "COMMUNICATION", tag("comms_plan"),
-                   "TRACKING", tag("tracking_items"))
-    bullets_slide(prs, st, tag("topic_heading"), tag("topic_points"))   # group: topic_slides
-    closing_slide(prs, st, "NEXT STEPS", tag("closing_note"), tag("next_steps"))
-    fields = [
-        F("kickoff_date", "3 November 2026", "Kickoff meeting date."),
-        F("project_name", "Haulage Transition Simulation Study", "The project's name — the big title."),
-        F("project_tagline", "Simulating the fleet transition to trolley-assist across three sites.", "One sentence: what the project does."),
-        F("presenter_line", "Jane Mokoena · Engagement Lead", "Presenter name and role."),
-        F("agenda_items", "Project introduction and objectives", "4–7 agenda bullets in running order.", type="list"),
-        F("dov_intro", "The project is a success when the client can make the transition decision with confidence.", "One sentence framing what success means."),
-        F("dov_points", "A validated simulation model of current haulage operations", "3–6 'delivered when' bullets.", type="list"),
-        F("deliverables", "Simulation model with baseline and transition scenarios", "The contractual deliverables, one per bullet.", type="list"),
-        F("team_members", "Jane Mokoena — Engagement Lead (consultant) — 60%", "One bullet per person: Name — Role (org) — Allocation.", type="list"),
-        F("approach_note", "Three sprints from data audit to scenario report, demos at each gate.", "One line summarising the delivery approach."),
-        F("milestones", "Sprint 1 (Weeks 1–2) — Data audit & model scaffold — Data-readiness memo", "One bullet per milestone/sprint: name (timing) — activities — deliverable.", type="list"),
-        F("comms_plan", "Weekly 30-min progress call — Thursdays 10:00", "Meeting cadences, channels, escalation path.", type="list"),
-        F("tracking_items", "Shared progress tracker updated every Friday", "How progress/risks/actions are tracked.", type="list"),
-        F("closing_note", "Data access and site contacts unlock sprint 1 — here's what we need this week", "One-sentence closing framing the immediate asks."),
-        F("next_steps", "Data extract of 12 months' dispatch records — Sipho Dlamini — by Friday", "3–5 action bullets with owners and dates.", type="list"),
-    ]
-    slide_groups = [
-        {"name": "topic_slides", "slide_index": 7, "min": 0, "max": 4,
-         "purpose": "Extra topic slides before the close (risks, assumptions, data needs, ways of working) — one topic per slide. Omit for the standard kickoff.",
-         "fields": [
-             F("topic_heading", "What we need from your team", "This slide's headline — one topic."),
-             F("topic_points", "A named data owner per site by week 1", "3–6 bullets for this topic.", type="list"),
-         ]},
-    ]
-    slides = [
-        {"index": 0, "name": "Title", "purpose": "Cover — project name, tagline, presenter."},
-        {"index": 1, "name": "Agenda", "purpose": "4–7 items in running order."},
-        {"index": 2, "name": "Definition of victory", "purpose": "What success means + 'delivered when' bullets."},
-        {"index": 3, "name": "Deliverables", "purpose": "The contractual deliverables."},
-        {"index": 4, "name": "Team", "purpose": "One bullet per person: name — role — allocation."},
-        {"index": 5, "name": "Approach & milestones", "purpose": "Delivery approach + one bullet per sprint/milestone."},
-        {"index": 6, "name": "Comms & tracking", "purpose": "Two columns: cadence/channels vs tracking."},
-        {"index": 7, "name": "Extra topic", "group": "topic_slides",
-         "purpose": "Optional additional topics, one per slide."},
-        {"index": 8, "name": "Closing / next steps", "purpose": "Immediate asks with owners and dates."},
-    ]
-    return {"fields": fields, "slide_groups": slide_groups, "slides": slides}
+    return _flex_preset(
+        prs, st, png,
+        default=["agenda", "bullets", "numbered", "team", "timeline", "two_col"],
+        eyebrow="PROJECT KICKOFF · 3 NOVEMBER 2026", title="Haulage Transition Simulation Study",
+        subtitle="Simulating the fleet transition to trolley-assist across three sites.",
+        closing="Data access and site contacts unlock sprint 1")
 
 
 def build_proposal(prs, st, png):
-    title_slide(prs, st, "PROPOSAL · " + tag("proposal_date"), tag("proposal_title"),
-                "Prepared for " + tag("client_name"), tag("author_line"))
-    bullets_slide(prs, st, "Context and challenge", tag("pain_points"), intro=tag("problem_statement"))
-    bullets_slide(prs, st, "Our approach", tag("approach_steps"), intro=tag("approach_summary"))
-    bullets_slide(prs, st, "Scope and deliverables", tag("scope_items"))
-    bullets_slide(prs, st, "The team", tag("team_members"))
-    bullets_slide(prs, st, "Timeline and investment", tag("investment_lines"), intro=tag("investment_summary"), size=18)
-    bullets_slide(prs, st, tag("topic_heading"), tag("topic_points"))   # group: topic_slides
-    closing_slide(prs, st, "WHY US", tag("value_statement"), tag("value_points"))
-    fields = [
-        F("proposal_date", "20 November 2026", "Proposal date."),
-        F("proposal_title", "Fleet Optimisation Study", "Short engagement title."),
-        F("client_name", "Acme Mining", "The prospective client's name."),
-        F("author_line", "Meridian Advisory · jane.mokoena@example.com", "Issuing team + contact."),
-        F("problem_statement", "Haulage costs rose 18% while fleet utilisation fell — the operating model, not the fleet size, is the constraint.", "1–2 sentence statement of the client's problem."),
-        F("pain_points", "Cycle times vary 2.3x between shifts for the same route", "3–5 evidence bullets of the pain.", type="list"),
-        F("approach_summary", "A three-phase engagement: baseline the operation, simulate the options, land the change.", "One sentence on the shape of the work."),
-        F("approach_steps", "Phase 1 (Weeks 1–3): data audit and baseline model", "One bullet per phase: name (timing) — what happens.", type="list"),
-        F("scope_items", "Validated simulation model of the current operation", "What's in scope, one deliverable per bullet.", type="list"),
-        F("team_members", "Jane Mokoena — Engagement Lead — simulation & mining ops", "One bullet per person: Name — Role — relevant expertise.", type="list"),
-        F("investment_summary", "Eight weeks, three consultants, fixed fee.", "One line: duration, team size, commercial model."),
-        F("investment_lines", "Phase 1 — Weeks 1–3 — $48k", "One bullet per phase or line item: phase — timing — fee.", type="list"),
-        F("value_statement", "We've done this transition twelve times in mining — we start with the answer's shape, not a blank page", "The single 'why us' sentence."),
-        F("value_points", "Twelve comparable engagements in the last five years", "3–5 differentiator bullets.", type="list"),
-    ]
-    slide_groups = [
-        {"name": "topic_slides", "slide_index": 6, "min": 0, "max": 4,
-         "purpose": "Extra topic slides before the close (case studies, assumptions, risks, references) — one topic per slide. Omit for the standard proposal.",
-         "fields": [
-             F("topic_heading", "A comparable engagement, delivered", "This slide's headline — one topic."),
-             F("topic_points", "Similar scope delivered for a tier-1 operator in 2025", "3–6 bullets for this topic.", type="list"),
-         ]},
-    ]
-    slides = [
-        {"index": 0, "name": "Title", "purpose": "Cover — engagement title, client, contact."},
-        {"index": 1, "name": "Context & challenge", "purpose": "Problem statement + evidence of the pain."},
-        {"index": 2, "name": "Approach", "purpose": "Shape of the work + one bullet per phase."},
-        {"index": 3, "name": "Scope & deliverables", "purpose": "What's in scope, one per bullet."},
-        {"index": 4, "name": "Team", "purpose": "Name — role — relevant expertise."},
-        {"index": 5, "name": "Timeline & investment", "purpose": "Duration, team size, fee per phase."},
-        {"index": 6, "name": "Extra topic", "group": "topic_slides",
-         "purpose": "Optional additional topics, one per slide."},
-        {"index": 7, "name": "Closing / why us", "purpose": "The single 'why us' sentence + differentiators."},
-    ]
-    return {"fields": fields, "slide_groups": slide_groups, "slides": slides}
+    return _flex_preset(
+        prs, st, png,
+        default=["bullets", "numbered", "bullets", "team", "table", "quote"],
+        eyebrow="PROPOSAL · 20 NOVEMBER 2026", title="Fleet Optimisation Study",
+        subtitle="Prepared for the operations leadership team.",
+        closing="Approve the engagement to start in January")
 
 
 def build_report_out(prs, st, png):
-    title_slide(prs, st, "PROJECT REPORT · " + tag("report_date"), tag("report_title"),
-                tag("report_subtitle"), tag("author_line"))
-    text_slide(prs, st, "Executive summary", tag("executive_summary"))
-    divider_slide(prs, st, "01", tag("findings_heading"), tag("findings_note"))
-    bullets_slide(prs, st, tag("finding_heading"), tag("finding_points"))          # group: finding_slides
-    visual_slide(prs, st, tag("evidence_heading"), tag("evidence_caption"), png)   # group: evidence_slides
-    bullets_slide(prs, st, "Recommendations", tag("recommendations"))
-    closing_slide(prs, st, "CONCLUSION", tag("conclusion_statement"), tag("next_steps"))
+    return _flex_preset(
+        prs, st, png,
+        default=["bullets", "section", "bullets", "bullets", "numbered", "quote"],
+        eyebrow="PROJECT REPORT · 12 DECEMBER 2026", title="Haulage Transition Study — Results",
+        subtitle="What we found, what it means, and what to do next.",
+        closing="Board decision on phase 1 within 90 days")
+
+
+# ---------------- flex_deck: composable body slides (Rev Sci-style motifs) ----------------
+# The whole middle of the deck is a typed, ordered "body" list: the fill engine
+# clones one designed source slide per entry (any mix, any order) and deletes the
+# unused sources. Item rows inside a slide are cloned shape GROUPS (circle rows,
+# chevrons, stat cards, timeline nodes) — entry count = row count, colors walk a
+# brand ramp. No fixed decorative image anywhere; logo/footer come from the brand pack.
+
+def _mix(c1, c2, t):
+    return RGBColor(*(round(a + (b - a) * t) for a, b in zip(c1, c2)))
+
+
+def _ramp(st, n=6):
+    """Brand color ramp for numbered/row motifs (dark -> primary -> accent -> tint)."""
+    stops = [st.dark, st.accent, st.accent2, _mix(st.accent2, RGBColor(0xFF, 0xFF, 0xFF), 0.45)]
+    out = []
+    for i in range(n):
+        pos = i * (len(stops) - 1) / (n - 1)
+        lo = min(int(pos), len(stops) - 2)
+        out.append(_mix(stops[lo], stops[lo + 1], pos - lo))
+    return out
+
+
+def _grp(slide):
+    g = slide.shapes.add_group_shape()
+    return g
+
+
+def _item_spec(field, shape, *, dx=0, dy=0, mx=5, ramp=None, subfields=(),
+               center=False):
+    spec = {"field": field, "shape": shape, "dx": int(dx), "dy": int(dy), "max": mx,
+            "subfields": list(subfields)}
+    if ramp:
+        spec["ramp"] = [str(c) for c in ramp]
+    if center:
+        spec.update(center=True, span=int(CONTENT_W), span_left=int(MARGIN))
+    return spec
+
+
+def _sub(name, example, guidance, *, required=True):
+    return {"name": name, "example": example, "guidance": guidance, "required": required}
+
+
+def flex_agenda_slide(prs, st, ramp):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    g = _grp(s)
+    g.name = "ITEM"
+    y = Inches(2.45)
+    d = Inches(0.62)
+    circle = g.shapes.add_shape(MSO_SHAPE.OVAL, int(MARGIN), int(y), int(d), int(d))
+    circle.fill.solid(); circle.fill.fore_color.rgb = ramp[0]
+    circle.line.fill.background(); circle.shadow.inherit = False
+    tf = circle.text_frame; tf.word_wrap = False
+    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
+    r = p.add_run(); r.text = tag("item._n")
+    r.font.size, r.font.bold, r.font.name = Pt(18), True, st.font
+    r.font.color.rgb = rgb("#FFFFFF")
+    tx = MARGIN + d + Inches(0.35)
+    _txt(g, st, tx, y - Inches(0.02), CONTENT_W - d - Inches(0.35), Inches(0.4),
+         tag("item.title"), 17, bold=True)
+    _txt(g, st, tx, y + Inches(0.32), CONTENT_W - d - Inches(0.35), Inches(0.35),
+         tag("item.text"), 12.5, color=st.muted)
+    _footer(s, st)
+    return s
+
+
+def flex_numbered_slide(prs, st, ramp):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    g = _grp(s)
+    g.name = "ITEM"
+    y = Inches(2.45)
+    ch_w, ch_h = Inches(0.85), Inches(0.7)
+    chev = g.shapes.add_shape(MSO_SHAPE.CHEVRON, int(MARGIN), int(y), int(ch_w), int(ch_h))
+    chev.fill.solid(); chev.fill.fore_color.rgb = ramp[0]
+    chev.line.fill.background(); chev.shadow.inherit = False
+    tf = chev.text_frame
+    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
+    r = p.add_run(); r.text = tag("item._n")
+    r.font.size, r.font.bold, r.font.name = Pt(16), True, st.font
+    r.font.color.rgb = rgb("#FFFFFF")
+    tx = MARGIN + ch_w + Inches(0.35)
+    _txt(g, st, tx, y - Inches(0.02), CONTENT_W - ch_w - Inches(0.35), Inches(0.4),
+         tag("item.title"), 16.5, bold=True)
+    _txt(g, st, tx, y + Inches(0.34), CONTENT_W - ch_w - Inches(0.35), Inches(0.35),
+         tag("item.text"), 12.5, color=st.muted)
+    _footer(s, st)
+    return s
+
+
+def flex_stats_slide(prs, st, ramp):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    g = _grp(s)
+    g.name = "ITEM"
+    w, h = Inches(2.75), Inches(2.5)
+    x, y = MARGIN, Inches(2.9)
+    card = g.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, int(x), int(y), int(w), int(h))
+    card.fill.solid(); card.fill.fore_color.rgb = st.panel
+    card.line.fill.background(); card.shadow.inherit = False
+    strip = g.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, int(x + Inches(0.25)),
+                               int(y + Inches(0.25)), int(Inches(0.6)), int(Inches(0.12)))
+    strip.fill.solid(); strip.fill.fore_color.rgb = ramp[0]
+    strip.line.fill.background(); strip.shadow.inherit = False
+    pad = Inches(0.25)
+    _txt(g, st, x + pad, y + Inches(0.55), w - 2 * pad, Inches(0.4), tag("item.label"),
+         12, color=st.muted, bold=True)
+    _txt(g, st, x + pad, y + Inches(1.0), w - 2 * pad, Inches(0.8), tag("item.value"),
+         28, bold=True)
+    _txt(g, st, x + pad, y + Inches(1.9), w - 2 * pad, Inches(0.45), tag("item.note"),
+         12.5, color=st.accent)
+    _footer(s, st)
+    return s
+
+
+def flex_team_slide(prs, st, ramp):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    g = _grp(s)
+    g.name = "ITEM"
+    y = Inches(2.4)
+    d = Inches(0.72)
+    circle = g.shapes.add_shape(MSO_SHAPE.OVAL, int(MARGIN), int(y), int(d), int(d))
+    circle.fill.solid(); circle.fill.fore_color.rgb = ramp[0]
+    circle.line.fill.background(); circle.shadow.inherit = False
+    tf = circle.text_frame
+    tf.word_wrap = False
+    tf.margin_left = tf.margin_right = 0
+    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
+    r = p.add_run(); r.text = tag("item.initials")
+    r.font.size, r.font.bold, r.font.name = Pt(15), True, st.font
+    r.font.color.rgb = rgb("#FFFFFF")
+    tx = MARGIN + d + Inches(0.35)
+    _txt(g, st, tx, y, Inches(4.6), Inches(0.4), tag("item.name"), 16, bold=True)
+    _txt(g, st, tx, y + Inches(0.38), Inches(4.6), Inches(0.35), tag("item.role"),
+         12.5, color=st.accent, bold=True)
+    _txt(g, st, MARGIN + Inches(6.2), y + Inches(0.1), CONTENT_W - Inches(6.2),
+         Inches(0.6), tag("item.note"), 12.5, color=st.muted)
+    _footer(s, st)
+    return s
+
+
+def flex_timeline_slide(prs, st, ramp):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    _rect(s, MARGIN, Inches(4.04), CONTENT_W, Inches(0.03), st.hair)
+    g = _grp(s)
+    g.name = "ITEM"
+    x = MARGIN
+    d = Inches(0.34)
+    dot = g.shapes.add_shape(MSO_SHAPE.OVAL, int(x + Inches(0.9)), int(Inches(3.9)),
+                             int(d), int(d))
+    dot.fill.solid(); dot.fill.fore_color.rgb = ramp[0]
+    dot.line.color.rgb = rgb("#FFFFFF"); dot.line.width = Pt(2)
+    dot.shadow.inherit = False
+    _txt(g, st, x, Inches(2.95), Inches(2.15), Inches(0.4), tag("item.label"), 14,
+         bold=True, align=PP_ALIGN.CENTER)
+    _txt(g, st, x, Inches(3.42), Inches(2.15), Inches(0.35), tag("item.date"), 12,
+         color=st.accent, bold=True, align=PP_ALIGN.CENTER)
+    _txt(g, st, x, Inches(4.5), Inches(2.15), Inches(1.5), tag("item.text"), 11.5,
+         color=st.muted, align=PP_ALIGN.CENTER)
+    _footer(s, st)
+    return s
+
+
+def flex_chart_slide(prs, st):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    slot = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, int(MARGIN), int(Inches(2.5)),
+                              int(CONTENT_W), int(Inches(3.9)))
+    slot.name = "CHART_SLOT"
+    slot.fill.solid(); slot.fill.fore_color.rgb = st.panel
+    slot.line.color.rgb = st.hair; slot.shadow.inherit = False
+    tfp = slot.text_frame.paragraphs[0]
+    r = tfp.add_run(); r.text = "Native chart renders here (fill.py builds it from the entry's data)"
+    r.font.size, r.font.name, r.font.color.rgb = Pt(12), st.font, st.muted
+    _txt(s, st, MARGIN, Inches(6.55), CONTENT_W, Inches(0.45), tag("takeaway"), 13,
+         color=st.accent, bold=True)
+    _footer(s, st)
+    return s
+
+
+def flex_table_slide(prs, st):
+    s = _slide(prs, st)
+    _accent_bar(s, st)
+    _title(s, st, tag("heading"))
+    slot = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, int(MARGIN), int(Inches(2.5)),
+                              int(CONTENT_W), int(Inches(3.9)))
+    slot.name = "TABLE_SLOT"
+    slot.fill.solid(); slot.fill.fore_color.rgb = st.panel
+    slot.line.color.rgb = st.hair; slot.shadow.inherit = False
+    tfp = slot.text_frame.paragraphs[0]
+    r = tfp.add_run(); r.text = "Native table renders here (fill.py builds it from the entry's columns/rows)"
+    r.font.size, r.font.name, r.font.color.rgb = Pt(12), st.font, st.muted
+    _txt(s, st, MARGIN, Inches(6.55), CONTENT_W, Inches(0.45), tag("note"), 12,
+         color=st.muted)
+    _footer(s, st)
+    return s
+
+
+def flex_quote_slide(prs, st):
+    s = _slide(prs, st, dark=True)
+    _rect(s, 0, 0, Inches(0.28), SH, st.accent)
+    _txt(s, st, MARGIN, Inches(1.6), Inches(1.2), Inches(1.4), "“", 110,
+         color=st.accent2, bold=True)
+    _txt(s, st, MARGIN + Inches(0.1), Inches(2.7), CONTENT_W - Inches(0.4), Inches(2.4),
+         tag("quote"), 28, color=st.bg, spacing=1.25)
+    _txt(s, st, MARGIN + Inches(0.1), Inches(5.6), CONTENT_W, Inches(0.5),
+         tag("attribution"), 15, color=st.light)
+    _footer(s, st, dark=True)
+    return s
+
+
+def _flex_spec(prs, st, png):
+    ramp = _ramp(st)
+    ramp_hex = ["#" + str(c) for c in ramp]
+
+    title_slide(prs, st, tag("deck_eyebrow"), tag("deck_title"),
+                tag("deck_subtitle"), tag("author_line"))                       # 0
+    flex_agenda_slide(prs, st, ramp)                                            # 1  agenda
+    bullets_slide(prs, st, tag("heading"), tag("points"), intro=tag("intro"))   # 2  bullets
+    flex_numbered_slide(prs, st, ramp)                                          # 3  numbered
+    flex_stats_slide(prs, st, ramp)                                             # 4  stats
+    two_list_slide(prs, st, tag("heading"), tag("left_label"), tag("left_items"),
+                   tag("right_label"), tag("right_items"))                      # 5  two_col
+    flex_team_slide(prs, st, ramp)                                              # 6  team
+    flex_timeline_slide(prs, st, ramp)                                          # 7  timeline
+    flex_chart_slide(prs, st)                                                   # 8  chart
+    flex_table_slide(prs, st)                                                   # 9  table
+    visual_slide(prs, st, tag("heading"), tag("caption"), png)                  # 10 image
+    flex_quote_slide(prs, st)                                                   # 11 quote
+    divider_slide(prs, st, tag("marker"), tag("heading"), tag("note"))          # 12 section
+    closing_slide(prs, st, "CLOSING", tag("closing_statement"), tag("next_steps"))  # 13
+
     fields = [
-        F("report_date", "12 December 2026", "Report-out date."),
-        F("report_title", "Haulage Transition Study — Results", "Deck title."),
-        F("report_subtitle", "What we found, what it means, and what to do next.", "One-sentence framing."),
-        F("author_line", "Prepared for Acme Mining · Meridian Advisory", "Audience + issuing team."),
-        F("executive_summary", "The study validated that a phased trolley-assist transition cuts haulage cost per tonne by 14% at current diesel prices, with payback inside 30 months. The binding constraint is substation capacity at the north pit, not fleet availability.", "3–5 sentence executive summary — findings first, then implication."),
-        F("findings_heading", "What the analysis showed", "Dark divider heading for the findings chapter."),
-        F("findings_note", "Three findings drive the recommendation.", "One muted line under the divider."),
-        F("recommendations", "Commit to the phased transition starting north pit Q2 2027", "3–5 recommendation bullets, ranked, with owners where known.", type="list"),
-        F("conclusion_statement", "The case is made — the next 90 days decide whether the savings start in 2027", "Single closing takeaway sentence."),
-        F("next_steps", "Board decision on phase 1 capex — Sipho Dlamini — by 31 January", "3–5 next-step bullets with owners and dates.", type="list"),
+        F("deck_eyebrow", "OPERATIONS REVIEW · Q3 2026", "Small uppercase kicker on the cover: deck kind + period."),
+        F("deck_title", "Q3 2026 Operations Review", "The deck title. Keep under ~8 words."),
+        F("deck_subtitle", "What moved, what's at risk, and the decisions we need.", "One-sentence framing under the title. Omit if the user gave nothing suitable.", required=False),
+        F("author_line", "Prepared by Operations · 15 October 2026", "Author/team and date. Omit if unknown — never invent one.", required=False),
+        F("closing_statement", "Approve the Q4 operations plan", "The single closing ask, one sentence."),
+        F("next_steps", "Confirm peak-season staffing plan — owner TBC — by 31 October", "Closing bullets ONLY from user-supplied actions/owners/dates. Omit entirely if none were given.", type="list", required=False),
     ]
-    slide_groups = [
-        {"name": "finding_slides", "slide_index": 3, "min": 1, "max": 5,
-         "purpose": "One finding (or finding theme) per slide, stated as an assertion with its supporting bullets.",
-         "fields": [
-             F("finding_heading", "Cost per tonne falls 14% in the phased scenario", "The finding as an assertion headline."),
-             F("finding_points", "Savings hold across the sensitivity range tested", "2–5 supporting bullets for this finding.", type="list"),
-         ]},
-        {"name": "evidence_slides", "slide_index": 4, "min": 0, "max": 3,
-         "purpose": "Evidence visuals — one chart image per slide. Omit the key (or pass []) for no visual slides.",
-         "fields": [
-             F("evidence_heading", "Cost per tonne by scenario", "Assertion headline for this visual."),
-             F("evidence_visual", "", "PNG/JPG path for this slide's chart. Swapped preserving geometry; omit to keep the placeholder.", type="image", required=False),
-             F("evidence_caption", "Simulated cost per tonne, 12-month horizon. Source: study model v2.1.", "Caption: units + source."),
-         ]},
-    ]
+
+    H = lambda ex: F("heading", ex, "This slide's headline — state the takeaway, not the topic.")
+    body_types = {
+        "agenda": {"slide_index": 1, "purpose": "Numbered agenda/overview rows (2–5).",
+                   "fields": [H("What we'll cover")],
+                   "items": _item_spec("items", "ITEM", dy=Inches(0.98), mx=5, ramp=ramp_hex,
+                                       subfields=[_sub("title", "Financial performance", "Row title (3–6 words)."),
+                                                  _sub("text", "Revenue, margin, and the fuel-cost squeeze", "One-line description.", required=False)])},
+        "bullets": {"slide_index": 2, "purpose": "Classic message slide: headline + 3–6 bullets (+ optional intro line).",
+                    "fields": [H("On-time delivery is approaching target"),
+                               F("intro", "", "Optional one-line setup above the bullets.", required=False),
+                               F("points", "94.1% on-time, 0.9 points below the 95% target", "3–6 bullets, one message each.", type="list")]},
+        "numbered": {"slide_index": 3, "purpose": "Sequential steps/priorities as chevron rows (2–5).",
+                     "fields": [H("How we get to launch")],
+                     "items": _item_spec("items", "ITEM", dy=Inches(0.95), mx=5, ramp=ramp_hex,
+                                         subfields=[_sub("title", "Complete discovery", "Step title."),
+                                                    _sub("text", "Data audit and stakeholder interviews, weeks 1–2", "One-line detail.", required=False)])},
+        "stats": {"slide_index": 4, "purpose": "2–4 KPI stat cards.",
+                  "fields": [H("The quarter at a glance")],
+                  "items": _item_spec("items", "ITEM", dx=Inches(3.05), mx=4, ramp=ramp_hex, center=True,
+                                      subfields=[_sub("label", "REVENUE", "Short uppercase label."),
+                                                 _sub("value", "$48.2M", "The big number."),
+                                                 _sub("note", "+6% QoQ", "Movement/context line.", required=False)])},
+        "two_col": {"slide_index": 5, "purpose": "Two labelled columns (risks/mitigations, before/after, pros/cons).",
+                    "fields": [H("Top risks and how we contain them"),
+                               F("left_label", "RISKS", "Left column label (uppercase)."),
+                               F("left_items", "Key-person dependency on night shift", "3–5 left bullets.", type="list"),
+                               F("right_label", "MITIGATIONS", "Right column label (uppercase)."),
+                               F("right_items", "Cross-training rotation from November", "One right bullet per left bullet.", type="list")]},
+        "team": {"slide_index": 6, "purpose": "Team/owner rows (2–5): initials avatar, name, role, note.",
+                 "fields": [H("Who is in the room")],
+                 "items": _item_spec("items", "ITEM", dy=Inches(0.95), mx=5, ramp=ramp_hex,
+                                     subfields=[_sub("initials", "JM", "1–3 letter initials for the avatar circle.", required=False),
+                                                _sub("name", "Jane Mokoena", "Person or team name."),
+                                                _sub("role", "Engagement Lead", "Role/responsibility."),
+                                                _sub("note", "Decision owner for scope changes", "Optional context.", required=False)])},
+        "timeline": {"slide_index": 7, "purpose": "Horizontal milestones (2–5): label, date, note.",
+                     "fields": [H("The road to cutover")],
+                     "items": _item_spec("items", "ITEM", dx=Inches(2.35), mx=5, ramp=ramp_hex, center=True,
+                                         subfields=[_sub("label", "Pilot live", "Milestone name."),
+                                                    _sub("date", "End September", "Timing."),
+                                                    _sub("text", "First depot on the new app", "Optional one-liner.", required=False)])},
+        "chart": {"slide_index": 8, "purpose": "Native editable chart built from data (column/bar/line/pie/area/doughnut).",
+                  "fields": [H("Throughput grew every month"),
+                             F("chart", {"chart_type": "column", "categories": ["Jul", "Aug", "Sep"],
+                                         "series": [{"name": "Actual", "values": [82, 91, 103]}]},
+                               'Chart spec: {"chart_type", "categories", "series":[{"name","values"}]}. Values numeric, one per category.', type="chart"),
+                             F("takeaway", "Sept exceeded plan by 8% — capacity holds through peak", "One-line takeaway under the chart.", required=False)]},
+        "table": {"slide_index": 9, "purpose": "Native table from columns/rows.",
+                  "fields": [H("Cost per order by site"),
+                             F("table", {"columns": ["Site", "Cost/order", "Trend"],
+                                         "rows": [["Columbus", "$2.41", "▼ 3%"]]},
+                               'Table spec: {"columns": [...], "rows": [[...], ...]} — every row matches columns length.', type="table"),
+                             F("note", "Source: finance close, Oct 2026.", "Optional source/footnote.", required=False)]},
+        "image": {"slide_index": 10, "purpose": "Full-width image with caption — REQUIRES an image path; omit this slide if you have no image.",
+                  "fields": [H("The loading bay at shift change"),
+                             F("image", "", "PNG/JPG path. REQUIRED — never ship this slide without a real image.", type="image"),
+                             F("caption", "Source: site walkthrough, July 2026.", "Small caption: what it shows + source.")]},
+        "quote": {"slide_index": 11, "purpose": "Big statement/quote on a dark slide.",
+                  "fields": [F("quote", "This quarter proved the network can absorb peak volume without adding sites.", "The statement (1–2 sentences)."),
+                             F("attribution", "Chief Operating Officer, September review", "Who said it / where it's from.", required=False)]},
+        "section": {"slide_index": 12, "purpose": "Dark chapter divider.",
+                    "fields": [F("marker", "01", "Big marker, e.g. 01 / 02 / A. Omit for no number.", required=False),
+                               H("What the audit showed"),
+                               F("note", "Three findings drive the recommendations.", "One muted line under the heading.", required=False)]},
+    }
+    body = {
+        "anchor_index": 0,
+        "min": 1, "max": 16,
+        "chart_style": {"colors": ramp_hex, "font": st.font,
+                        "table_head": "#" + str(st.dark), "table_band": "#" + str(st.panel),
+                        "ink": "#" + str(st.ink)},
+        "types": body_types,
+    }
     slides = [
-        {"index": 0, "name": "Title", "purpose": "Cover — date, title, subtitle, audience."},
-        {"index": 1, "name": "Executive summary", "purpose": "3–5 sentences: findings first, then implication."},
-        {"index": 2, "name": "Section divider", "purpose": "Dark chapter break into the findings."},
-        {"index": 3, "name": "Finding", "group": "finding_slides",
-         "purpose": "One finding per slide — assertion headline + supporting bullets."},
-        {"index": 4, "name": "Evidence visual", "group": "evidence_slides",
-         "purpose": "Chart image + source caption backing the findings."},
-        {"index": 5, "name": "Recommendations", "purpose": "Ranked recommendation bullets with owners."},
-        {"index": 6, "name": "Closing / conclusion", "purpose": "Single takeaway + next steps with owners and dates."},
+        {"index": 0, "name": "Cover", "purpose": "Eyebrow, title, subtitle, author line."},
+        *[{"index": d["slide_index"], "name": t, "body_type": t, "purpose": d["purpose"]}
+          for t, d in sorted(body_types.items(), key=lambda kv: kv[1]["slide_index"])],
+        {"index": 13, "name": "Closing", "purpose": "Single ask + next steps."},
     ]
-    return {"fields": fields, "slide_groups": slide_groups, "slides": slides}
+    return {"fields": fields, "slide_groups": [], "slides": slides, "body": body}
+
+
+def build_flex_deck(prs, st, png):
+    return _flex_spec(prs, st, png)
 
 
 TEMPLATES = {
-    "exec_update": (build_exec_update, "Executive/quarterly business update (QBR): KPIs, evidence, highlights, risks, decisions."),
-    "project_kickoff": (build_project_kickoff, "Project kickoff: agenda, definition of victory, deliverables, team, approach, comms."),
-    "proposal": (build_proposal, "Client proposal: problem, approach, scope, team, investment, why-us."),
-    "report_out": (build_report_out, "Project results report-out: executive summary, findings, evidence, recommendations."),
+    "exec_update": (build_exec_update, "Executive/quarterly business update (QBR). Flex preset — scaffold suggests stat cards, section, chart, topic bullets, risks two-col; any body type can be added/reordered."),
+    "flex_deck": (build_flex_deck, "Universal composable deck: pick ANY mix/order of body slides — agenda, bullets, numbered steps, stat cards, two-col, team, timeline, native charts, tables, image evidence, quote, section dividers. Use when no preset narrative fits."),
+    "project_kickoff": (build_project_kickoff, "Project kickoff. Flex preset — scaffold suggests agenda, objectives, numbered approach, team, milestone timeline, comms two-col; any body type can be added/reordered."),
+    "proposal": (build_proposal, "Client proposal. Flex preset — scaffold suggests problem bullets, numbered approach, scope, team, investment table, quote; any body type can be added/reordered."),
+    "report_out": (build_report_out, "Project results report-out. Flex preset — scaffold suggests summary, findings section+bullets, numbered recommendations, quote; add image evidence slides when the user supplies files."),
 }
 
 
@@ -637,12 +811,16 @@ def build_one(name: str, brand: dict, registry: Path, owner: str, created: str) 
     tpl = dest / "template.pptx"
     prs.save(str(tpl))
 
-    # Wire image-slot fields (global AND per-group) to their package media part.
+    # Wire image-slot fields (global, per-group AND per-body-type) to their media part.
     slot = media_part_for(tpl, png)
-    for f in fields + [gf for g in slide_groups for gf in g["fields"]]:
+    body = spec.get("body")
+    body_fields = [bf for d in (body or {}).get("types", {}).values()
+                   for bf in d.get("fields", [])]
+    for f in fields + [gf for g in slide_groups for gf in g["fields"]] + body_fields:
         if f["type"] == "image" and not f["media_part"]:
             f["media_part"] = slot
 
+    import hashlib
     manifest = {
         "template_id": f"_builtin/{name}",
         "client": "_builtin",
@@ -660,13 +838,20 @@ def build_one(name: str, brand: dict, registry: Path, owner: str, created: str) 
         "slide_groups": slide_groups,
         "slides": slides_meta,
         "source_terms": SOURCE_TERMS,
+        # validate.py fails a delivered deck whose media still contains this
+        # placeholder image — an image slot that was never swapped must not ship.
+        "placeholder_media_sha1": [hashlib.sha1(png).hexdigest()],
     }
+    if body:
+        manifest["body"] = body
     (dest / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False),
                                         encoding="utf-8")
     n_slides = len(prs.slides._sldIdLst)
-    n_fields = len(fields) + sum(len(g["fields"]) for g in slide_groups)
+    n_fields = len(fields) + sum(len(g["fields"]) for g in slide_groups) + len(body_fields)
     groups_note = (" (+" + ", ".join(f"{g['name']} ×{g.get('min', 1)}–{g.get('max') or '∞'}"
                                      for g in slide_groups) + ")") if slide_groups else ""
+    if body:
+        groups_note += f" (body: {len(body['types'])} composable types)"
     print(f"Registered _builtin/{name}: {n_slides} slides{groups_note}, {n_fields} fields -> {dest}")
     return dest
 

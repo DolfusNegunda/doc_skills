@@ -130,6 +130,18 @@ python scripts/render_pages.py out.pptx --out-dir pages/            # vision pas
   tags so `validate.py` fails. `validate.py --manifest` widens the slide-count check to
   the groups' min–max range. Manifest `slides` (per-slide `purpose`, `group`) drives the
   slide guide that `registry.py scaffold` prints.
+- **Composable body (`fill.py`, pptx)** — a manifest `body`
+  (`{anchor_index, min, max, chart_style, types: {<type>: {slide_index, fields, items?}}}`)
+  makes the whole middle of a deck a typed, ORDERED list: `data["body"]` entries each name
+  a `type`; the engine clones that type's designed source slide into position (any mix,
+  any order), fills it, then deletes every unused source. Three special field types:
+  `chart` (native editable PowerPoint chart from `{chart_type, categories, series}`, colors
+  from the manifest's `chart_style`), `table` (native table from `{columns, rows}`), and a
+  type's `items` spec (`{field, shape, dx/dy, max, ramp, subfields}`) that clones a named
+  template shape GROUP per row — numbered circles/chevrons/stat cards/timeline nodes with
+  `{{ item.* }}` tags, `{{ item._n }}` auto-numbering, and per-row brand-ramp recoloring.
+  `validate.py --manifest` widens the slide count for body decks and FAILS any deck still
+  containing the template's placeholder visual (`placeholder_media_sha1`).
 - **Source-residue check (`validate.py`)** — `--source-terms` / manifest `source_terms`
   fails the fill if source-exemplar content (client/project/code/dates/domain terms) survives.
   "No leftover tags" ≠ "successfully reused". Use project-IDENTIFYING terms, not recurring people.

@@ -11,195 +11,671 @@
   "changelog": [
     "2026-07-16: generated with brand pack 'default'"
   ],
-  "description": "Client proposal: problem, approach, scope, team, investment, why-us.",
+  "description": "Client proposal. Flex preset — scaffold suggests problem bullets, numbered approach, scope, team, investment table, quote; any body type can be added/reordered.",
   "fields": [
     {
-      "name": "proposal_date",
+      "name": "deck_eyebrow",
       "type": "text",
-      "example": "20 November 2026",
-      "guidance": "Proposal date.",
+      "example": "PROPOSAL · 20 NOVEMBER 2026",
+      "guidance": "Small uppercase kicker on the cover: deck kind + period.",
       "required": true,
       "media_part": ""
     },
     {
-      "name": "proposal_title",
+      "name": "deck_title",
       "type": "text",
       "example": "Fleet Optimisation Study",
-      "guidance": "Short engagement title.",
+      "guidance": "The deck title. Keep under ~8 words.",
       "required": true,
       "media_part": ""
     },
     {
-      "name": "client_name",
+      "name": "deck_subtitle",
       "type": "text",
-      "example": "Acme Mining",
-      "guidance": "The prospective client's name.",
-      "required": true,
+      "example": "Prepared for the operations leadership team.",
+      "guidance": "One-sentence framing under the title. Omit if the user gave nothing suitable.",
+      "required": false,
       "media_part": ""
     },
     {
       "name": "author_line",
       "type": "text",
-      "example": "Meridian Advisory · jane.mokoena@example.com",
-      "guidance": "Issuing team + contact.",
-      "required": true,
+      "example": "Prepared by Operations · 15 October 2026",
+      "guidance": "Author/team and date. Omit if unknown — never invent one.",
+      "required": false,
       "media_part": ""
     },
     {
-      "name": "problem_statement",
+      "name": "closing_statement",
       "type": "text",
-      "example": "Haulage costs rose 18% while fleet utilisation fell — the operating model, not the fleet size, is the constraint.",
-      "guidance": "1–2 sentence statement of the client's problem.",
+      "example": "Approve the engagement to start in January",
+      "guidance": "The single closing ask, one sentence.",
       "required": true,
       "media_part": ""
     },
     {
-      "name": "pain_points",
+      "name": "next_steps",
       "type": "list",
-      "example": "Cycle times vary 2.3x between shifts for the same route",
-      "guidance": "3–5 evidence bullets of the pain.",
-      "required": true,
-      "media_part": ""
-    },
-    {
-      "name": "approach_summary",
-      "type": "text",
-      "example": "A three-phase engagement: baseline the operation, simulate the options, land the change.",
-      "guidance": "One sentence on the shape of the work.",
-      "required": true,
-      "media_part": ""
-    },
-    {
-      "name": "approach_steps",
-      "type": "list",
-      "example": "Phase 1 (Weeks 1–3): data audit and baseline model",
-      "guidance": "One bullet per phase: name (timing) — what happens.",
-      "required": true,
-      "media_part": ""
-    },
-    {
-      "name": "scope_items",
-      "type": "list",
-      "example": "Validated simulation model of the current operation",
-      "guidance": "What's in scope, one deliverable per bullet.",
-      "required": true,
-      "media_part": ""
-    },
-    {
-      "name": "team_members",
-      "type": "list",
-      "example": "Jane Mokoena — Engagement Lead — simulation & mining ops",
-      "guidance": "One bullet per person: Name — Role — relevant expertise.",
-      "required": true,
-      "media_part": ""
-    },
-    {
-      "name": "investment_summary",
-      "type": "text",
-      "example": "Eight weeks, three consultants, fixed fee.",
-      "guidance": "One line: duration, team size, commercial model.",
-      "required": true,
-      "media_part": ""
-    },
-    {
-      "name": "investment_lines",
-      "type": "list",
-      "example": "Phase 1 — Weeks 1–3 — $48k",
-      "guidance": "One bullet per phase or line item: phase — timing — fee.",
-      "required": true,
-      "media_part": ""
-    },
-    {
-      "name": "value_statement",
-      "type": "text",
-      "example": "We've done this transition twelve times in mining — we start with the answer's shape, not a blank page",
-      "guidance": "The single 'why us' sentence.",
-      "required": true,
-      "media_part": ""
-    },
-    {
-      "name": "value_points",
-      "type": "list",
-      "example": "Twelve comparable engagements in the last five years",
-      "guidance": "3–5 differentiator bullets.",
-      "required": true,
+      "example": "Confirm peak-season staffing plan — owner TBC — by 31 October",
+      "guidance": "Closing bullets ONLY from user-supplied actions/owners/dates. Omit entirely if none were given.",
+      "required": false,
       "media_part": ""
     }
   ],
   "row_groups": [],
-  "slide_groups": [
-    {
-      "name": "topic_slides",
-      "slide_index": 6,
-      "min": 0,
-      "max": 4,
-      "purpose": "Extra topic slides before the close (case studies, assumptions, risks, references) — one topic per slide. Omit for the standard proposal.",
-      "fields": [
-        {
-          "name": "topic_heading",
-          "type": "text",
-          "example": "A comparable engagement, delivered",
-          "guidance": "This slide's headline — one topic.",
-          "required": true,
-          "media_part": ""
-        },
-        {
-          "name": "topic_points",
-          "type": "list",
-          "example": "Similar scope delivered for a tier-1 operator in 2025",
-          "guidance": "3–6 bullets for this topic.",
-          "required": true,
-          "media_part": ""
-        }
-      ]
-    }
-  ],
+  "slide_groups": [],
   "slides": [
     {
       "index": 0,
-      "name": "Title",
-      "purpose": "Cover — engagement title, client, contact."
+      "name": "Cover",
+      "purpose": "Eyebrow, title, subtitle, author line."
     },
     {
       "index": 1,
-      "name": "Context & challenge",
-      "purpose": "Problem statement + evidence of the pain."
+      "name": "agenda",
+      "body_type": "agenda",
+      "purpose": "Numbered agenda/overview rows (2–5)."
     },
     {
       "index": 2,
-      "name": "Approach",
-      "purpose": "Shape of the work + one bullet per phase."
+      "name": "bullets",
+      "body_type": "bullets",
+      "purpose": "Classic message slide: headline + 3–6 bullets (+ optional intro line)."
     },
     {
       "index": 3,
-      "name": "Scope & deliverables",
-      "purpose": "What's in scope, one per bullet."
+      "name": "numbered",
+      "body_type": "numbered",
+      "purpose": "Sequential steps/priorities as chevron rows (2–5)."
     },
     {
       "index": 4,
-      "name": "Team",
-      "purpose": "Name — role — relevant expertise."
+      "name": "stats",
+      "body_type": "stats",
+      "purpose": "2–4 KPI stat cards."
     },
     {
       "index": 5,
-      "name": "Timeline & investment",
-      "purpose": "Duration, team size, fee per phase."
+      "name": "two_col",
+      "body_type": "two_col",
+      "purpose": "Two labelled columns (risks/mitigations, before/after, pros/cons)."
     },
     {
       "index": 6,
-      "name": "Extra topic",
-      "group": "topic_slides",
-      "purpose": "Optional additional topics, one per slide."
+      "name": "team",
+      "body_type": "team",
+      "purpose": "Team/owner rows (2–5): initials avatar, name, role, note."
     },
     {
       "index": 7,
-      "name": "Closing / why us",
-      "purpose": "The single 'why us' sentence + differentiators."
+      "name": "timeline",
+      "body_type": "timeline",
+      "purpose": "Horizontal milestones (2–5): label, date, note."
+    },
+    {
+      "index": 8,
+      "name": "chart",
+      "body_type": "chart",
+      "purpose": "Native editable chart built from data (column/bar/line/pie/area/doughnut)."
+    },
+    {
+      "index": 9,
+      "name": "table",
+      "body_type": "table",
+      "purpose": "Native table from columns/rows."
+    },
+    {
+      "index": 10,
+      "name": "image",
+      "body_type": "image",
+      "purpose": "Full-width image with caption — REQUIRES an image path; omit this slide if you have no image."
+    },
+    {
+      "index": 11,
+      "name": "quote",
+      "body_type": "quote",
+      "purpose": "Big statement/quote on a dark slide."
+    },
+    {
+      "index": 12,
+      "name": "section",
+      "body_type": "section",
+      "purpose": "Dark chapter divider."
+    },
+    {
+      "index": 13,
+      "name": "Closing",
+      "purpose": "Single ask + next steps."
     }
   ],
   "source_terms": [
     "Acme Mining",
     "Jane Mokoena",
     "Sipho Dlamini"
-  ]
+  ],
+  "placeholder_media_sha1": [
+    "d6651b3ea4cf6552718d6c0eb3f9ddf8c57e004b"
+  ],
+  "body": {
+    "anchor_index": 0,
+    "min": 1,
+    "max": 16,
+    "chart_style": {
+      "colors": [
+        "#0F172A",
+        "#1C459E",
+        "#1F6CE0",
+        "#0E88BD",
+        "#34A5C0",
+        "#77C2D5"
+      ],
+      "font": "Segoe UI",
+      "table_head": "#0F172A",
+      "table_band": "#F1F5F9",
+      "ink": "#0F172A"
+    },
+    "types": {
+      "agenda": {
+        "slide_index": 1,
+        "purpose": "Numbered agenda/overview rows (2–5).",
+        "fields": [
+          {
+            "name": "heading",
+            "type": "text",
+            "example": "What we'll cover",
+            "guidance": "This slide's headline — state the takeaway, not the topic.",
+            "required": true,
+            "media_part": ""
+          }
+        ],
+        "items": {
+          "field": "items",
+          "shape": "ITEM",
+          "dx": 0,
+          "dy": 896112,
+          "max": 5,
+          "subfields": [
+            {
+              "name": "title",
+              "example": "Financial performance",
+              "guidance": "Row title (3–6 words).",
+              "required": true
+            },
+            {
+              "name": "text",
+              "example": "Revenue, margin, and the fuel-cost squeeze",
+              "guidance": "One-line description.",
+              "required": false
+            }
+          ],
+          "ramp": [
+            "#0F172A",
+            "#1C459E",
+            "#1F6CE0",
+            "#0E88BD",
+            "#34A5C0",
+            "#77C2D5"
+          ]
+        }
+      },
+      "bullets": {
+        "slide_index": 2,
+        "purpose": "Classic message slide: headline + 3–6 bullets (+ optional intro line).",
+        "fields": [
+          {
+            "name": "heading",
+            "type": "text",
+            "example": "On-time delivery is approaching target",
+            "guidance": "This slide's headline — state the takeaway, not the topic.",
+            "required": true,
+            "media_part": ""
+          },
+          {
+            "name": "intro",
+            "type": "text",
+            "example": "",
+            "guidance": "Optional one-line setup above the bullets.",
+            "required": false,
+            "media_part": ""
+          },
+          {
+            "name": "points",
+            "type": "list",
+            "example": "94.1% on-time, 0.9 points below the 95% target",
+            "guidance": "3–6 bullets, one message each.",
+            "required": true,
+            "media_part": ""
+          }
+        ]
+      },
+      "numbered": {
+        "slide_index": 3,
+        "purpose": "Sequential steps/priorities as chevron rows (2–5).",
+        "fields": [
+          {
+            "name": "heading",
+            "type": "text",
+            "example": "How we get to launch",
+            "guidance": "This slide's headline — state the takeaway, not the topic.",
+            "required": true,
+            "media_part": ""
+          }
+        ],
+        "items": {
+          "field": "items",
+          "shape": "ITEM",
+          "dx": 0,
+          "dy": 868680,
+          "max": 5,
+          "subfields": [
+            {
+              "name": "title",
+              "example": "Complete discovery",
+              "guidance": "Step title.",
+              "required": true
+            },
+            {
+              "name": "text",
+              "example": "Data audit and stakeholder interviews, weeks 1–2",
+              "guidance": "One-line detail.",
+              "required": false
+            }
+          ],
+          "ramp": [
+            "#0F172A",
+            "#1C459E",
+            "#1F6CE0",
+            "#0E88BD",
+            "#34A5C0",
+            "#77C2D5"
+          ]
+        }
+      },
+      "stats": {
+        "slide_index": 4,
+        "purpose": "2–4 KPI stat cards.",
+        "fields": [
+          {
+            "name": "heading",
+            "type": "text",
+            "example": "The quarter at a glance",
+            "guidance": "This slide's headline — state the takeaway, not the topic.",
+            "required": true,
+            "media_part": ""
+          }
+        ],
+        "items": {
+          "field": "items",
+          "shape": "ITEM",
+          "dx": 2788920,
+          "dy": 0,
+          "max": 4,
+          "subfields": [
+            {
+              "name": "label",
+              "example": "REVENUE",
+              "guidance": "Short uppercase label.",
+              "required": true
+            },
+            {
+              "name": "value",
+              "example": "$48.2M",
+              "guidance": "The big number.",
+              "required": true
+            },
+            {
+              "name": "note",
+              "example": "+6% QoQ",
+              "guidance": "Movement/context line.",
+              "required": false
+            }
+          ],
+          "ramp": [
+            "#0F172A",
+            "#1C459E",
+            "#1F6CE0",
+            "#0E88BD",
+            "#34A5C0",
+            "#77C2D5"
+          ],
+          "center": true,
+          "span": 10545775,
+          "span_left": 822960
+        }
+      },
+      "two_col": {
+        "slide_index": 5,
+        "purpose": "Two labelled columns (risks/mitigations, before/after, pros/cons).",
+        "fields": [
+          {
+            "name": "heading",
+            "type": "text",
+            "example": "Top risks and how we contain them",
+            "guidance": "This slide's headline — state the takeaway, not the topic.",
+            "required": true,
+            "media_part": ""
+          },
+          {
+            "name": "left_label",
+            "type": "text",
+            "example": "RISKS",
+            "guidance": "Left column label (uppercase).",
+            "required": true,
+            "media_part": ""
+          },
+          {
+            "name": "left_items",
+            "type": "list",
+            "example": "Key-person dependency on night shift",
+            "guidance": "3–5 left bullets.",
+            "required": true,
+            "media_part": ""
+          },
+          {
+            "name": "right_label",
+            "type": "text",
+            "example": "MITIGATIONS",
+            "guidance": "Right column label (uppercase).",
+            "required": true,
+            "media_part": ""
+          },
+          {
+            "name": "right_items",
+            "type": "list",
+            "example": "Cross-training rotation from November",
+            "guidance": "One right bullet per left bullet.",
+            "required": true,
+            "media_part": ""
+          }
+        ]
+      },
+      "team": {
+        "slide_index": 6,
+        "purpose": "Team/owner rows (2–5): initials avatar, name, role, note.",
+        "fields": [
+          {
+            "name": "heading",
+            "type": "text",
+            "example": "Who is in the room",
+            "guidance": "This slide's headline — state the takeaway, not the topic.",
+            "required": true,
+            "media_part": ""
+          }
+        ],
+        "items": {
+          "field": "items",
+          "shape": "ITEM",
+          "dx": 0,
+          "dy": 868680,
+          "max": 5,
+          "subfields": [
+            {
+              "name": "initials",
+              "example": "JM",
+              "guidance": "1–3 letter initials for the avatar circle.",
+              "required": false
+            },
+            {
+              "name": "name",
+              "example": "Jane Mokoena",
+              "guidance": "Person or team name.",
+              "required": true
+            },
+            {
+              "name": "role",
+              "example": "Engagement Lead",
+              "guidance": "Role/responsibility.",
+              "required": true
+            },
+            {
+              "name": "note",
+              "example": "Decision owner for scope changes",
+              "guidance": "Optional context.",
+              "required": false
+            }
+          ],
+          "ramp": [
+            "#0F172A",
+            "#1C459E",
+            "#1F6CE0",
+            "#0E88BD",
+            "#34A5C0",
+            "#77C2D5"
+          ]
+        }
+      },
+      "timeline": {
+        "slide_index": 7,
+        "purpose": "Horizontal milestones (2–5): label, date, note.",
+        "fields": [
+          {
+            "name": "heading",
+            "type": "text",
+            "example": "The road to cutover",
+            "guidance": "This slide's headline — state the takeaway, not the topic.",
+            "required": true,
+            "media_part": ""
+          }
+        ],
+        "items": {
+          "field": "items",
+          "shape": "ITEM",
+          "dx": 2148840,
+          "dy": 0,
+          "max": 5,
+          "subfields": [
+            {
+              "name": "label",
+              "example": "Pilot live",
+              "guidance": "Milestone name.",
+              "required": true
+            },
+            {
+              "name": "date",
+              "example": "End September",
+              "guidance": "Timing.",
+              "required": true
+            },
+            {
+              "name": "text",
+              "example": "First depot on the new app",
+              "guidance": "Optional one-liner.",
+              "required": false
+            }
+          ],
+          "ramp": [
+            "#0F172A",
+            "#1C459E",
+            "#1F6CE0",
+            "#0E88BD",
+            "#34A5C0",
+            "#77C2D5"
+          ],
+          "center": true,
+          "span": 10545775,
+          "span_left": 822960
+        }
+      },
+      "chart": {
+        "slide_index": 8,
+        "purpose": "Native editable chart built from data (column/bar/line/pie/area/doughnut).",
+        "fields": [
+          {
+            "name": "heading",
+            "type": "text",
+            "example": "Throughput grew every month",
+            "guidance": "This slide's headline — state the takeaway, not the topic.",
+            "required": true,
+            "media_part": ""
+          },
+          {
+            "name": "chart",
+            "type": "chart",
+            "example": {
+              "chart_type": "column",
+              "categories": [
+                "Jul",
+                "Aug",
+                "Sep"
+              ],
+              "series": [
+                {
+                  "name": "Actual",
+                  "values": [
+                    82,
+                    91,
+                    103
+                  ]
+                }
+              ]
+            },
+            "guidance": "Chart spec: {\"chart_type\", \"categories\", \"series\":[{\"name\",\"values\"}]}. Values numeric, one per category.",
+            "required": true,
+            "media_part": ""
+          },
+          {
+            "name": "takeaway",
+            "type": "text",
+            "example": "Sept exceeded plan by 8% — capacity holds through peak",
+            "guidance": "One-line takeaway under the chart.",
+            "required": false,
+            "media_part": ""
+          }
+        ]
+      },
+      "table": {
+        "slide_index": 9,
+        "purpose": "Native table from columns/rows.",
+        "fields": [
+          {
+            "name": "heading",
+            "type": "text",
+            "example": "Cost per order by site",
+            "guidance": "This slide's headline — state the takeaway, not the topic.",
+            "required": true,
+            "media_part": ""
+          },
+          {
+            "name": "table",
+            "type": "table",
+            "example": {
+              "columns": [
+                "Site",
+                "Cost/order",
+                "Trend"
+              ],
+              "rows": [
+                [
+                  "Columbus",
+                  "$2.41",
+                  "▼ 3%"
+                ]
+              ]
+            },
+            "guidance": "Table spec: {\"columns\": [...], \"rows\": [[...], ...]} — every row matches columns length.",
+            "required": true,
+            "media_part": ""
+          },
+          {
+            "name": "note",
+            "type": "text",
+            "example": "Source: finance close, Oct 2026.",
+            "guidance": "Optional source/footnote.",
+            "required": false,
+            "media_part": ""
+          }
+        ]
+      },
+      "image": {
+        "slide_index": 10,
+        "purpose": "Full-width image with caption — REQUIRES an image path; omit this slide if you have no image.",
+        "fields": [
+          {
+            "name": "heading",
+            "type": "text",
+            "example": "The loading bay at shift change",
+            "guidance": "This slide's headline — state the takeaway, not the topic.",
+            "required": true,
+            "media_part": ""
+          },
+          {
+            "name": "image",
+            "type": "image",
+            "example": "",
+            "guidance": "PNG/JPG path. REQUIRED — never ship this slide without a real image.",
+            "required": true,
+            "media_part": "ppt/media/image1.png"
+          },
+          {
+            "name": "caption",
+            "type": "text",
+            "example": "Source: site walkthrough, July 2026.",
+            "guidance": "Small caption: what it shows + source.",
+            "required": true,
+            "media_part": ""
+          }
+        ]
+      },
+      "quote": {
+        "slide_index": 11,
+        "purpose": "Big statement/quote on a dark slide.",
+        "fields": [
+          {
+            "name": "quote",
+            "type": "text",
+            "example": "This quarter proved the network can absorb peak volume without adding sites.",
+            "guidance": "The statement (1–2 sentences).",
+            "required": true,
+            "media_part": ""
+          },
+          {
+            "name": "attribution",
+            "type": "text",
+            "example": "Chief Operating Officer, September review",
+            "guidance": "Who said it / where it's from.",
+            "required": false,
+            "media_part": ""
+          }
+        ]
+      },
+      "section": {
+        "slide_index": 12,
+        "purpose": "Dark chapter divider.",
+        "fields": [
+          {
+            "name": "marker",
+            "type": "text",
+            "example": "01",
+            "guidance": "Big marker, e.g. 01 / 02 / A. Omit for no number.",
+            "required": false,
+            "media_part": ""
+          },
+          {
+            "name": "heading",
+            "type": "text",
+            "example": "What the audit showed",
+            "guidance": "This slide's headline — state the takeaway, not the topic.",
+            "required": true,
+            "media_part": ""
+          },
+          {
+            "name": "note",
+            "type": "text",
+            "example": "Three findings drive the recommendations.",
+            "guidance": "One muted line under the heading.",
+            "required": false,
+            "media_part": ""
+          }
+        ]
+      }
+    },
+    "default": [
+      "bullets",
+      "numbered",
+      "bullets",
+      "team",
+      "table",
+      "quote"
+    ]
+  }
 }

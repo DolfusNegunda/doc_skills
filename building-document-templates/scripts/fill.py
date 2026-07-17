@@ -46,7 +46,15 @@ def expand_list(paragraph, tag, items, wrap):
     pristine (still-tagged) paragraph inserted right after the previous one.
     """
     if not items:
-        paragraph._p.getparent().remove(paragraph._p)
+        # Drop the bullet line — but a text body must keep >=1 paragraph (an empty
+        # <p:txBody>/<w:tc> is schema-INVALID; PowerPoint refuses to open the file),
+        # so when this is the last paragraph, blank it instead of removing it.
+        p_el = paragraph._p
+        parent_el = p_el.getparent()
+        if sum(1 for c in parent_el if c.tag == p_el.tag) > 1:
+            parent_el.remove(p_el)
+        else:
+            C.replace_in_paragraph(paragraph, tag, "")
         return
     template_p = copy.deepcopy(paragraph._p)   # pristine copy (still holds the tag)
     parent = paragraph._parent
@@ -233,6 +241,15 @@ def _swap_instance_image(slide, media_part, image_path):
         if blip.get(qn("r:embed")) in target_rids:
             blip.set(qn("r:embed"), new_rid)
             hit = True
+    if hit:
+        # Drop the now-dangling rels to the placeholder media: a swapped slide must
+        # not keep the placeholder part reachable, or validate.py's placeholder
+        # gate fires on a deck whose visible images are all correct.
+        for rid in target_rids:
+            still_used = any(b.get(qn("r:embed")) == rid
+                             for b in slide._element.iter(qn("a:blip")))
+            if not still_used:
+                slide.part.drop_rel(rid)
     return hit
 
 
@@ -296,6 +313,297 @@ def expand_slide_groups(prs, groups, data):
     return missing
 
 
+# ---------------- Composable deck body (manifest key: "body") ----------------
+# A body-enabled template ships ONE source slide per body TYPE (bullets, chart,
+# team, ...). The data's "body" is an ordered list of typed entries; the engine
+# clones the matching source per entry (any order, any mix), fills it, and
+# finally deletes every source slide — so the deck contains exactly the slides
+# the content asked for, all byte-faithful to the designer originals.
+
+def _shape_by_name(slide, name):
+    for sh in slide.shapes:
+        if sh.name == name:
+            return sh
+    return None
+
+
+def _first_off(el):
+    from pptx.oxml.ns import qn
+    return next(el.iter(qn("a:off")), None)
+
+
+def _insert_native_chart(slide, spec, style, field_name):
+    """Replace the CHART_SLOT marker with a real, editable PowerPoint chart."""
+    from pptx.chart.data import CategoryChartData
+    from pptx.dml.color import RGBColor
+    from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+    from pptx.util import Pt
+
+    marker = _shape_by_name(slide, "CHART_SLOT")
+    if marker is None:
+        print(f"WARNING: no CHART_SLOT marker for '{field_name}' — chart skipped.")
+        return False
+    kinds = {"bar": XL_CHART_TYPE.BAR_CLUSTERED, "column": XL_CHART_TYPE.COLUMN_CLUSTERED,
+             "line": XL_CHART_TYPE.LINE, "pie": XL_CHART_TYPE.PIE,
+             "area": XL_CHART_TYPE.AREA, "doughnut": XL_CHART_TYPE.DOUGHNUT}
+    kind = str(spec.get("chart_type", "column")).lower()
+    if kind not in kinds:
+        sys.exit(f"body chart '{field_name}': unknown chart_type {spec.get('chart_type')!r} "
+                 f"— valid: {', '.join(sorted(kinds))}")
+    cats = spec.get("categories") or []
+    series = spec.get("series") or []
+    if not cats or not series:
+        sys.exit(f"body chart '{field_name}': needs 'categories' and 'series' "
+                 '[{"name", "values"}] with values matching categories length.')
+    cd = CategoryChartData()
+    cd.categories = [str(c) for c in cats]
+    for s in series:
+        vals = s.get("values") or []
+        if len(vals) != len(cats):
+            sys.exit(f"body chart '{field_name}': series '{s.get('name', '')}' has "
+                     f"{len(vals)} values for {len(cats)} categories.")
+        cd.add_series(str(s.get("name", "")), tuple(float(v) for v in vals))
+
+    x, y, cx, cy = marker.left, marker.top, marker.width, marker.height
+    marker._element.getparent().remove(marker._element)
+    chart = slide.shapes.add_chart(kinds[kind], x, y, cx, cy, cd).chart
+
+    colors = [RGBColor.from_string(c.lstrip("#")) for c in (style or {}).get("colors", [])] \
+        or [RGBColor.from_string(c) for c in ("2563EB", "0E7490", "38BDF8", "64748B", "94A3B8")]
+    chart.has_title = False
+    chart.font.size = Pt(12)
+    if (style or {}).get("font"):
+        chart.font.name = style["font"]
+    if kind in ("pie", "doughnut"):
+        pts = chart.plots[0].series[0].points
+        for i, pt in enumerate(pts):
+            pt.format.fill.solid()
+            pt.format.fill.fore_color.rgb = colors[i % len(colors)]
+        chart.has_legend = True
+    else:
+        for i, ser in enumerate(chart.series):
+            if kind in ("line",):
+                ser.format.line.color.rgb = colors[i % len(colors)]
+                ser.format.line.width = Pt(2.5)
+                ser.smooth = False
+            else:
+                ser.format.fill.solid()
+                ser.format.fill.fore_color.rgb = colors[i % len(colors)]
+        chart.has_legend = len(series) > 1
+    if chart.has_legend:
+        chart.legend.position = XL_LEGEND_POSITION.BOTTOM
+        chart.legend.include_in_layout = False
+    return True
+
+
+def _insert_native_table(slide, spec, style, field_name):
+    """Replace the TABLE_SLOT marker with a real table styled from the brand."""
+    from pptx.dml.color import RGBColor
+    from pptx.util import Pt
+
+    marker = _shape_by_name(slide, "TABLE_SLOT")
+    if marker is None:
+        print(f"WARNING: no TABLE_SLOT marker for '{field_name}' — table skipped.")
+        return False
+    cols = spec.get("columns") or []
+    rows = spec.get("rows") or []
+    if not cols or not rows:
+        sys.exit(f"body table '{field_name}': needs 'columns' [..] and 'rows' [[..]].")
+    for i, r in enumerate(rows):
+        if len(r) != len(cols):
+            sys.exit(f"body table '{field_name}': row {i + 1} has {len(r)} cells "
+                     f"for {len(cols)} columns.")
+    x, y, cx, cy = marker.left, marker.top, marker.width, marker.height
+    marker._element.getparent().remove(marker._element)
+    tbl = slide.shapes.add_table(len(rows) + 1, len(cols), x, y, cx, cy).table
+    # Compact rows (add_table stretches rows to fill the slot's height).
+    from pptx.util import Emu
+    tbl.rows[0].height = Emu(457200)          # 0.5" header
+    for r in list(tbl.rows)[1:]:
+        r.height = Emu(402336)                # 0.44" body rows
+    s = style or {}
+    head = RGBColor.from_string(s.get("table_head", "1E293B").lstrip("#"))
+    band = RGBColor.from_string(s.get("table_band", "F1F5F9").lstrip("#"))
+    ink = RGBColor.from_string(s.get("ink", "0F172A").lstrip("#"))
+    font = s.get("font")
+    for c, name in enumerate(cols):
+        cell = tbl.cell(0, c)
+        cell.fill.solid()
+        cell.fill.fore_color.rgb = head
+        cell.text = str(name)
+        for p in cell.text_frame.paragraphs:
+            for r_ in p.runs:
+                r_.font.size, r_.font.bold = Pt(12), True
+                r_.font.color.rgb = RGBColor.from_string("FFFFFF")
+                if font:
+                    r_.font.name = font
+    for ri, row in enumerate(rows, start=1):
+        for ci, val in enumerate(row):
+            cell = tbl.cell(ri, ci)
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = band if ri % 2 == 0 else RGBColor.from_string("FFFFFF")
+            cell.text = "" if val is None else str(val)
+            for p in cell.text_frame.paragraphs:
+                for r_ in p.runs:
+                    r_.font.size = Pt(11.5)
+                    r_.font.color.rgb = ink
+                    if font:
+                        r_.font.name = font
+    return True
+
+
+def _expand_items(slide, entry, item_spec, missing, label):
+    """Clone the ITEM template shape/group once per item — the Rev Sci pattern:
+    each row/card is a designed shape group; entry count = row count; colors walk
+    the brand ramp per instance."""
+    from pptx.oxml.ns import qn
+
+    tmpl_shape = _shape_by_name(slide, item_spec.get("shape", "ITEM"))
+    field = item_spec.get("field", "items")
+    items = entry.get(field) or []
+    if isinstance(items, dict):
+        items = [items]
+    items = [{"title": i} if isinstance(i, str) else i for i in items]
+    if tmpl_shape is None:
+        if items:
+            print(f"WARNING: {label}: no '{item_spec.get('shape', 'ITEM')}' template "
+                  "shape on the slide — items skipped.")
+        return
+    tmpl_el = tmpl_shape._element
+    if not items:
+        missing.add(f"{label}.{field}")
+        return
+    mx = item_spec.get("max")
+    if mx and len(items) > mx:
+        print(f"WARNING: {label}: {len(items)} items exceeds max {mx} — building all; "
+              "check the render for overflow.")
+
+    pristine = copy.deepcopy(tmpl_el)
+    off0 = _first_off(tmpl_el)
+    x0, y0 = int(off0.get("x")), int(off0.get("y"))
+    dx, dy = int(item_spec.get("dx", 0)), int(item_spec.get("dy", 0))
+    ramp = [c.lstrip("#").upper() for c in item_spec.get("ramp", [])]
+    subfields = item_spec.get("subfields", [])
+    parent_tree = tmpl_el.getparent()
+
+    instances = [tmpl_el]
+    anchor = tmpl_el
+    for _ in items[1:]:
+        clone = copy.deepcopy(pristine)
+        anchor.addnext(clone)
+        anchor = clone
+        instances.append(clone)
+
+    if item_spec.get("center") and dx:
+        total = (len(items) - 1) * dx + tmpl_shape.width
+        x0 = max(0, (item_spec.get("span", 12192000) - total) // 2 +
+                 int(item_spec.get("span_left", 0)))
+
+    for i, (el, item) in enumerate(zip(instances, items)):
+        off = _first_off(el)
+        off.set("x", str(x0 + i * dx))
+        off.set("y", str(y0 + i * dy))
+        if ramp:
+            want = ramp[i % len(ramp)]
+            for clr in el.iter(qn("a:srgbClr")):
+                if clr.get("val", "").upper() == ramp[0]:
+                    clr.set("val", want)
+        paras = [_wrap_pptx(p, None) for p in el.iter(qn("a:p"))]
+        for p in paras:                       # auto row number ({{ item._n }})
+            C.replace_in_paragraph(p, C.placeholder("item._n"), str(i + 1))
+        for sf in subfields:
+            name = sf["name"]
+            tag_ = C.placeholder(f"item.{name}")
+            val = item.get(name)
+            if _is_empty(val) and sf.get("required", True):
+                missing.add(f"{label}.{field}[{i}].{name}")
+                continue
+            for p in paras:
+                C.replace_in_paragraph(p, tag_, "" if val is None else str(val))
+    _ = parent_tree  # tree mutation done in place
+
+
+def expand_body(prs, spec, data):
+    """Compose the deck from typed body entries (any order, any mix). Returns the
+    set of missing required names; leaves source-slide tags in place when the body
+    itself is missing so validate.py fails loudly."""
+    missing = set()
+    types = spec.get("types", {})
+    entries = data.get("body")
+    if isinstance(entries, dict):
+        entries = [entries]
+    entries = entries or []
+    valid = sorted(types)
+
+    bad = [f'body[{i}]: unknown type {e.get("type")!r}' for i, e in enumerate(entries)
+           if e.get("type") not in types]
+    if bad:
+        sys.exit("\n".join(bad) + f"\nValid body types: {', '.join(valid)}")
+
+    mn, mx = spec.get("min", 1), spec.get("max")
+    if len(entries) < mn:
+        missing.add("body")
+        return missing            # sources (and their tags) stay -> validate fails
+    if mx and len(entries) > mx:
+        print(f"WARNING: body has {len(entries)} slides, max is {mx} — building all; "
+              "consider splitting the deck.")
+
+    slides = list(prs.slides)
+    sources = {t: slides[d["slide_index"]] for t, d in types.items()
+               if d["slide_index"] < len(slides)}
+    anchor = slides[spec["anchor_index"]]
+    chart_style = spec.get("chart_style", {})
+
+    for i, entry in enumerate(entries):
+        t = entry["type"]
+        tdef = types[t]
+        label = f"body[{i}]({t})"
+        slide = clone_pptx_slide(prs, sources[t])
+        _move_slide_after(prs, slide, anchor)
+        anchor = slide
+
+        text_fields = [f for f in tdef.get("fields", [])
+                       if f.get("type", "text") not in ("image", "chart", "table")]
+        paras = list(_slide_paragraphs(slide))
+        miss, ftypes = fill_paragraphs(paras, entry, text_fields, _wrap_pptx)
+        missing |= {f"{label}.{m}" for m in miss}
+        paras = list(_slide_paragraphs(slide))
+        for f in text_fields:
+            if ftypes[f["name"]] == "list" or f["name"] in miss:
+                continue
+            val = entry.get(f["name"], "")
+            tag_ = C.placeholder(f["name"])
+            for p in paras:
+                C.replace_in_paragraph(p, tag_, "" if val is None else str(val))
+
+        for f in tdef.get("fields", []):
+            name, ftype = f["name"], f.get("type", "text")
+            val = entry.get(name)
+            if ftype == "image":
+                if _is_empty(val):
+                    if f.get("required", True):
+                        missing.add(f"{label}.{name}")
+                elif not _swap_instance_image(slide, f.get("media_part", ""), val):
+                    print(f"WARNING: image slot for '{label}.{name}' not found.")
+            elif ftype == "chart":
+                if _is_empty(val):
+                    missing.add(f"{label}.{name}")
+                else:
+                    _insert_native_chart(slide, val, chart_style, f"{label}.{name}")
+            elif ftype == "table":
+                if _is_empty(val):
+                    missing.add(f"{label}.{name}")
+                else:
+                    _insert_native_table(slide, val, chart_style, f"{label}.{name}")
+
+        if tdef.get("items"):
+            _expand_items(slide, entry, tdef["items"], missing, label)
+
+    for t in sorted(sources, key=lambda t: types[t]["slide_index"], reverse=True):
+        delete_pptx_slide(prs, sources[t])
+    return missing
+
+
 def fill_paragraphs(paragraphs, data, fields, wrap):
     """Apply the manifest's fields to every paragraph.
 
@@ -351,8 +659,10 @@ def render(fmt, template_path, data, manifest, out_path):
         # Slide-group expansion FIRST — it clones/drops whole slides and fills
         # each instance from its own entry, before the global passes run.
         group_missing = set()
+        if manifest.get("body"):
+            group_missing |= expand_body(prs, manifest["body"], data)
         if manifest.get("slide_groups"):
-            group_missing = expand_slide_groups(prs, manifest["slide_groups"], data)
+            group_missing |= expand_slide_groups(prs, manifest["slide_groups"], data)
         paras = list(C.iter_pptx_paragraphs(prs))
         wrap = _wrap_pptx
         saver = prs
@@ -444,7 +754,8 @@ def main():
     else:
         sys.exit("Provide --client/--doc-type, or --template (+--manifest).")
 
-    data = json.loads(Path(args.data).read_text(encoding="utf-8"))
+    # utf-8-sig: tolerate the BOM that Windows PowerShell prepends to UTF-8 files.
+    data = json.loads(Path(args.data).read_text(encoding="utf-8-sig"))
     fmt = manifest["format"]
 
     # Slides don't reflow: a value much longer than the field's example is the main

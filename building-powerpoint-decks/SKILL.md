@@ -17,13 +17,24 @@ Produce a deck that is visually consistent, readable from the back of a room, an
 built on masters so it can be restyled or extended without manual cleanup.
 
 ## Step 0 — Fill a built-in template before you build (decision gate)
-The suite ships fill-ready deck templates in the document-template registry:
-`exec_update`, `project_kickoff`, `proposal`, `report_out` — clean, brand-pack-driven,
-**expandable** decks built by `build_template_library.py` (repeatable topic/finding/
-evidence slides via slide groups; see below).
+The suite ships fill-ready deck templates in the document-template registry — ALL built
+on one composable visual system: cover + a typed, ORDERED `body` list + closing. Body
+types: agenda, bullets, numbered steps, stat cards, two-col, team, timeline, native
+**chart** built from data, native **table**, image evidence (requires a real file),
+quote, section divider — any mix, any order, entry count = slide count. Charts/tables
+are real editable PowerPoint objects styled from the brand pack; nothing decorative is
+fixed. The templates differ only in their scaffolded DEFAULT sequence:
 
-If the requested deck matches one of these, **do not author slides at all**; run the
-deterministic fill path (safe for any model, however small):
+- **`exec_update`** — QBR/quarterly: stats → section → chart → topics → risks two-col.
+- **`project_kickoff`** — agenda → objectives → approach steps → team → timeline → comms.
+- **`proposal`** — problem → approach steps → scope → team → investment table → quote.
+- **`report_out`** — summary → findings → recommendations (+ image evidence when files exist).
+- **`flex_deck`** — no preset; compose freely when no narrative above fits.
+
+Pick the closest preset (its scaffold pre-selects the right sequence), then add, remove,
+or reorder body entries to fit the content. If the requested deck matches any of these,
+**do not author slides at all**; run the deterministic fill path (safe for any model,
+however small):
 
 ```bash
 cd ../building-document-templates
@@ -32,8 +43,10 @@ python scripts/registry.py scaffold --builtin exec-update --out content.json
 # edit content.json (scaffold prints per-field guidance AND a slide guide:
 # what each slide is for, which are repeatable, which are optional)
 python scripts/fill.py --client _builtin --doc-type exec_update --data content.json --out out.pptx
-python scripts/validate.py out.pptx --template registry/_builtin/exec_update/template.pptx \
-    --manifest registry/_builtin/exec_update/manifest.json             # must be OK
+python scripts/validate.py out.pptx --client _builtin --doc-type exec_update   # must be OK
+# (same selector as fill.py — resolves the template+manifest gates automatically;
+#  do NOT substitute building-powerpoint-decks/validate_pptx.py, which is the
+#  authoring-path style checker and skips the manifest gates)
 python ../building-powerpoint-decks/scripts/render_pptx.py out.pptx    # vision pass, every slide
 ```
 

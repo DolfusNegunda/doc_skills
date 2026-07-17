@@ -498,32 +498,61 @@ def main():
         dman = reg / "_builtin" / "memo" / "manifest.json"
         check("docx library builder registers memo", rc == 0 and dman.exists())
 
-        # slide groups: the ONE topic slide expands per entry (byte-copies of the
-        # designer slide, so theme/layout come along); the optional evidence slide
-        # drops when its list is empty; a required group with no entries fails.
-        rc, _ = run(f"{tdir}/registry.py", "scaffold", "--builtin", "exec_update",
+        # slide groups (the family/client-template engine): a dedicated mini
+        # fixture — one repeatable topic slide, one optional slide that drops.
+        from pptx.util import Inches as _In
+        gp = _Prs()
+        gp.slide_width, gp.slide_height = 12192000, 6858000
+        titles = ("{{ deck_title }}", "{{ t_head }}", "{{ o_head }}", "{{ closing }}")
+        for t in titles:
+            s = gp.slides.add_slide(gp.slide_layouts[5])
+            s.shapes.title.text = t
+        gp.slides[1].shapes.add_textbox(_In(1), _In(2), _In(8), _In(2)) \
+            .text_frame.text = "{{ t_points }}"
+        gdir = reg / "_builtin" / "mini_groups"
+        gdir.mkdir(parents=True, exist_ok=True)
+        gp.save(gdir / "template.pptx")
+        gman = {"template_id": "_builtin/mini_groups", "client": "_builtin",
+                "doc_type": "mini_groups", "format": "pptx",
+                "template_file": "template.pptx", "version": "1.0.0",
+                "description": "slide-group engine fixture",
+                "fields": [{"name": "deck_title", "type": "text", "example": "T",
+                            "guidance": "", "required": True},
+                           {"name": "closing", "type": "text", "example": "C",
+                            "guidance": "", "required": True}],
+                "row_groups": [], "source_terms": [],
+                "slide_groups": [
+                    {"name": "topic_slides", "slide_index": 1, "min": 1, "max": 4,
+                     "purpose": "one topic per slide",
+                     "fields": [{"name": "t_head", "type": "text", "example": "H",
+                                 "guidance": "", "required": True},
+                                {"name": "t_points", "type": "list", "example": "P",
+                                 "guidance": "", "required": True}]},
+                    {"name": "opt_slides", "slide_index": 2, "min": 0, "max": 2,
+                     "purpose": "optional slide",
+                     "fields": [{"name": "o_head", "type": "text", "example": "O",
+                                 "guidance": "", "required": True}]}]}
+        (gdir / "manifest.json").write_text(json.dumps(gman), encoding="utf-8")
+        rc, _ = run(f"{tdir}/registry.py", "scaffold", "--builtin", "mini_groups",
                     "--out", tmp / "sg_content.json", "--with-examples", env=env)
         sg = json.loads((tmp / "sg_content.json").read_text(encoding="utf-8"))
         check("scaffold emits slide-group entry lists",
               rc == 0 and isinstance(sg.get("topic_slides"), list)
-              and isinstance(sg.get("evidence_slides"), list))
-        sg = json.loads(json.dumps(sg).replace("Acme Mining", "Initech")
-                        .replace("Jane Mokoena", "Pat Lee").replace("Sipho Dlamini", "Sam Cole"))
-        sg["evidence_slides"] = []
-        sg["topic_slides"] = [
-            {"topic_heading": f"Topic {i}", "topic_points": [f"Point {i}a", f"Point {i}b"]}
-            for i in (1, 2, 3)]
+              and isinstance(sg.get("opt_slides"), list))
+        sg = {"deck_title": "Initech", "closing": "Done", "opt_slides": [],
+              "topic_slides": [{"t_head": f"Topic {i}", "t_points": [f"P{i}a", f"P{i}b"]}
+                               for i in (1, 2, 3)]}
         (tmp / "sg_filled.json").write_text(json.dumps(sg), encoding="utf-8")
         out_sg = tmp / "sg_deck.pptx"
-        rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "exec_update",
+        rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "mini_groups",
                     "--data", tmp / "sg_filled.json", "--out", out_sg, env=env)
         rc2, d = run(f"{tdir}/validate.py", out_sg, "--template",
-                     reg / "_builtin" / "exec_update" / "template.pptx", "--manifest", pman)
+                     gdir / "template.pptx", "--manifest", gdir / "manifest.json")
         sg_texts = [p.text for sl in _Prs(str(out_sg)).slides for sh in sl.shapes
                     if sh.has_text_frame for p in sh.text_frame.paragraphs]
         check("slide group expands per entry and drops the optional slide",
               rc == 0 and rc2 == 0 and d and d["status"] == "OK"
-              and d["checks"]["n_slides"] == 8
+              and d["checks"]["n_slides"] == 5      # title + 3 topics + closing
               and all(f"Topic {i}" in sg_texts for i in (1, 2, 3)))
         # delete+clone must not collide on slide partnames (duplicate zip entries)
         from collections import Counter
@@ -549,9 +578,77 @@ def main():
               proc.returncode == 0 and "ONLY with facts the user supplied" in proc.stdout)
         sg_missing = {k: v for k, v in sg.items() if k != "topic_slides"}
         (tmp / "sg_missing.json").write_text(json.dumps(sg_missing), encoding="utf-8")
-        rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "exec_update",
+        rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "mini_groups",
                     "--data", tmp / "sg_missing.json", "--out", tmp / "sg_missing.pptx", env=env)
         check("missing required slide group fails the fill", rc != 0)
+
+        # flex_deck: composable typed body — any mix/order, native charts+tables,
+        # item-row cloning, placeholder-visual gate.
+        rc, _ = run("building-powerpoint-decks/scripts/build_template_library.py",
+                    "--only", "flex_deck", "--registry", reg, "--created", "2026-07-16")
+        fman = reg / "_builtin" / "flex_deck" / "manifest.json"
+        check("library builder registers flex_deck (composable body)", rc == 0 and fman.exists())
+        rc, _ = run(f"{tdir}/registry.py", "scaffold", "--builtin", "flex_deck",
+                    "--out", tmp / "flex_scaffold.json", "--with-examples", env=env)
+        fs = json.loads((tmp / "flex_scaffold.json").read_text(encoding="utf-8"))
+        check("flex scaffold emits an ordered typed body list",
+              rc == 0 and isinstance(fs.get("body"), list) and
+              all("type" in e for e in fs["body"]))
+        # next_steps deliberately OMITTED (optional empty list must leave a valid
+        # txBody) and an image entry included (swap must drop the placeholder rel).
+        flex_data = {
+            "deck_eyebrow": "REVIEW", "deck_title": "Initech Q3", "deck_subtitle": "Sub.",
+            "author_line": "Ops", "closing_statement": "Approve the plan",
+            "body": [
+                {"type": "agenda", "heading": "Cover",
+                 "items": [{"title": "One", "text": "A"}, {"title": "Two"}]},
+                {"type": "chart", "heading": "Grew",
+                 "chart": {"chart_type": "column", "categories": ["A", "B"],
+                           "series": [{"name": "S", "values": [1, 2]}]}},
+                {"type": "table", "heading": "Costs",
+                 "table": {"columns": ["Site", "Cost"], "rows": [["X", "1"], ["Y", "2"]]}},
+                {"type": "team", "heading": "Owners",
+                 "items": [{"initials": "AB", "name": "Alpha", "role": "Lead"}]},
+                {"type": "image", "heading": "Pic", "image": str(tmp / "orig_logo.png"),
+                 "caption": "cap"},
+                {"type": "quote", "quote": "It works."},
+            ],
+        }
+        (tmp / "flex_data.json").write_text(json.dumps(flex_data), encoding="utf-8")
+        out_flex = tmp / "flex.pptx"
+        rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "flex_deck",
+                    "--data", tmp / "flex_data.json", "--out", out_flex, env=env)
+        rc2, d = run(f"{tdir}/validate.py", out_flex, "--template",
+                     reg / "_builtin" / "flex_deck" / "template.pptx", "--manifest", fman)
+        flex_names = zipfile.ZipFile(out_flex).namelist()
+        check("flex body fills 6 typed slides + native chart + table + image, validates",
+              rc == 0 and rc2 == 0 and d and d["status"] == "OK"
+              and d["checks"]["n_slides"] == 8          # cover + 6 body + closing
+              and not d["checks"]["placeholder_visuals"]   # swapped image drops old rel
+              and any(n.startswith("ppt/charts/chart") for n in flex_names))
+        # Empty optional list must never leave a paragraph-less <p:txBody> —
+        # schema-invalid; PowerPoint refuses to open the file (field-test find).
+        import re as _re
+        with zipfile.ZipFile(out_flex) as zf:
+            txbody_ok = all(
+                "<a:p" in seg
+                for n in flex_names if _re.fullmatch(r"ppt/slides/slide\d+\.xml", n)
+                for seg in _re.findall(r"<p:txBody>.*?</p:txBody>",
+                                       zf.read(n).decode("utf-8", "ignore"), _re.S))
+        check("empty optional list leaves a schema-valid text body", txbody_ok)
+        # unswapped placeholder visual must FAIL validation (warehouse-audit bug)
+        rc, d = run(f"{tdir}/validate.py", reg / "_builtin" / "flex_deck" / "template.pptx",
+                    "--template", reg / "_builtin" / "flex_deck" / "template.pptx",
+                    "--manifest", fman)
+        check("placeholder visual left in a deck fails validation",
+              rc == 1 and d and d["checks"].get("placeholder_visuals"))
+        # image body entry without a file -> fill refuses
+        bad = dict(flex_data)
+        bad["body"] = [{"type": "image", "heading": "Pic", "caption": "c"}]
+        (tmp / "flex_bad.json").write_text(json.dumps(bad), encoding="utf-8")
+        rc, _ = run(f"{tdir}/fill.py", "--client", "_builtin", "--doc-type", "flex_deck",
+                    "--data", tmp / "flex_bad.json", "--out", tmp / "flex_bad.pptx", env=env)
+        check("image body slide without an image fails the fill", rc != 0)
 
         rc, _ = run(f"{tdir}/registry.py", "scaffold", "--builtin", "memo",
                     "--out", tmp / "memo_content.json", "--with-examples", env=env)
