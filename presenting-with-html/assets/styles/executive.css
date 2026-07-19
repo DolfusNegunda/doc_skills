@@ -2,51 +2,50 @@
   /* ===== STYLE PRESET: executive editorial =====
      Annual-report look: warm paper, serif display headings, squared corners,
      hairline rules, restrained accent (thin rules + small caps, no gradients).
-     Appended after the base stylesheet by build_html.py; overrides the
-     boardroom glass look while keeping the identical class vocabulary. */
-  :root, :root[data-theme="dark"] {
-    --bg-0:#12151B; --bg-1:#12151B; --bg-glow:transparent;
-    --glass-bg:#181C24; --glass-border:rgba(255,255,255,.14);
-    --card-bg:#1D222C; --shadow:none; --grid:rgba(255,255,255,.08);
+     Appended after the shell <style> by build_html.py; overrides the default
+     tokens using the current --panel/--hair vocabulary (shared deck + report). */
+  :root, :root[data-theme="light"] {
+    --bg:#F3F0E9; --panel:#FCFBF7; --panel-2:#F7F4EC;
+    --hair:#DED8CB; --hair-strong:#C9C1AF; --grid:#DED8CB;
+    --shadow:none; --tint:#F0EADD;
   }
-  :root[data-theme="light"] {
-    --bg-0:#FAF9F6; --bg-1:#FAF9F6; --bg-glow:transparent;
-    --glass-bg:#FFFFFF; --glass-border:rgba(30,32,40,.18);
-    --card-bg:#FFFFFF; --shadow:none; --grid:rgba(30,32,40,.08);
+  :root[data-theme="dark"] {
+    --bg:#14130F; --panel:#1C1A15; --panel-2:#211F19;
+    --hair:rgba(255,255,255,.13); --hair-strong:rgba(255,255,255,.20); --grid:rgba(255,255,255,.10);
+    --shadow:none; --tint:#211F19;
   }
-  body { background:var(--bg-0); }
-  .slide-inner, .report-section, .toc, .kpi, .card, .chart-panel, .compare-panel,
-  .figure, .table-wrap, .brand-mark, .hero-logo, .nav-btn, .theme-toggle,
-  .slide-count, .to-top, .person, .callout {
-    backdrop-filter:none; -webkit-backdrop-filter:none; border-radius:0;
-    box-shadow:none;
+  body { background:var(--bg); }
+  /* squared corners, no blur, no shadow across every surface */
+  .masthead, .report-section, .report-footer, .toc a, .kpi, .card, .chart-panel,
+  .compare-panel, .figure, .table-wrap, .person, .callout, .nav-btn, .btn, .rail,
+  .slide-count, .to-top, .slide, .slide-foot, .kpi-band, thead th {
+    backdrop-filter:none; -webkit-backdrop-filter:none; border-radius:0 !important; box-shadow:none;
   }
-  .slide-inner, .report-section, .toc { border-width:1px; }
-  h1, h2, h3, .kpi .value, .big, .quote-text, blockquote {
-    font-family:Georgia, 'Times New Roman', 'Source Serif Pro', serif;
+  /* serif display type */
+  h1, h2, h3, .kpi .value, .card .big, .quote-text, .section-num {
+    font-family:'Iowan Old Style','Palatino Linotype','Source Serif Pro',Georgia,'Times New Roman',serif;
     letter-spacing:0;
   }
-  h1 { font-weight:500; }
-  h2 { font-weight:500; border-bottom:1px solid var(--glass-border); padding-bottom:10px; }
+  h1 { font-weight:600; }
+  h2 { font-weight:600; border-bottom:1px solid var(--hair-strong); padding-bottom:12px; }
   h3 { font-weight:600; }
-  .kpi .value { font-weight:500; }
-  .eyebrow, .toc-title, .tl-label, .kpi .label, thead th {
-    letter-spacing:.14em; text-transform:uppercase; font-size:.72rem;
+  .kpi .value { font-weight:600; }
+  /* small caps for labels + heads */
+  .eyebrow, .toc .toc-title, .tl-label, .kpi .label, thead th, .section-kicker span, .callout-label {
+    letter-spacing:.14em; text-transform:uppercase;
   }
-  .accent, .section-num {
-    background:none; -webkit-background-clip:initial; background-clip:initial;
-    color:var(--accent); font-style:italic;
-  }
-  .accent { border-bottom:3px solid var(--accent); }
-  .bullets li::before {
-    background:none; border-radius:0; transform:none; width:14px; height:auto;
-    content:"—"; color:var(--accent); font-weight:600;
-  }
-  .compare-panel li::before { background:var(--accent); border-radius:0; transform:none; }
+  /* italic editorial accent, no gradient, no underline artifacts */
+  .accent { color:var(--brand); font-style:italic; }
+  .section-num { color:var(--brand); font-style:italic; opacity:1; }
+  .section-kicker .rule { display:none; }
+  /* em-dash bullets */
+  .bullets li { padding-left:34px; }
+  .bullets li::before { content:"\2014"; background:none; border-radius:0; transform:none;
+    width:auto; height:auto; color:var(--brand); font-weight:600; top:0; left:0; }
+  .compare-panel li::before { background:var(--brand); border-radius:0; transform:none; }
   .compare-panel.alt li::before { background:var(--accent-2); }
-  .dot.active { background:var(--accent); transform:scale(1.2); }
-  .timeline::before { background:var(--glass-border); opacity:1; }
-  thead th { backdrop-filter:none; border-bottom:2px solid var(--accent); }
-  .nav-btn, .theme-toggle, .slide-count, .to-top {
-    background:var(--glass-bg); border:1px solid var(--glass-border);
-  }
+  .dot.active { background:var(--brand); transform:scale(1.2); }
+  .timeline::before { background:var(--hair-strong); opacity:1; }
+  thead th { border-bottom:2px solid var(--brand); }
+  /* thin accent rule on the utility bar instead of the gradient band */
+  .utility-bar { background:var(--brand); height:4px; }

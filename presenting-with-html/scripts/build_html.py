@@ -100,7 +100,7 @@ CALLOUT_KINDS = ("takeaway", "recommendation", "action", "info", "warning")
 RAG_STATUSES = ("green", "amber", "red")
 STYLES = {
     "boardroom": {"default_theme": "dark",
-                  "blurb": "dark-first glassmorphism — the boardroom look"},
+                  "blurb": "dark-first flat corporate — the boardroom look (shell default, no override CSS)"},
     "clean": {"default_theme": "light",
               "blurb": "light-first flat corporate — conservative, print-oriented"},
     "executive": {"default_theme": "light",
@@ -707,6 +707,32 @@ def kpi_row(kpis: list, margin: bool = True) -> str:
     return f'<div class="kpi-row{cols}"{style}>' + "".join(cards) + "</div>"
 
 
+def kpi_band(kpis: list) -> str:
+    """Edge-to-edge KPI band under the report cover (distinct from kpi_row)."""
+    cards = []
+    for k in kpis:
+        delta = ""
+        if k.get("delta"):
+            down = " down" if k.get("down") else ""
+            delta = f'<div class="delta{down}">{esc(k["delta"])}</div>'
+        cards.append(f'<div class="kpi"><div class="label">{esc(k.get("label", ""))}</div>'
+                     f'<div class="value">{esc(k.get("value", ""))}</div>{delta}</div>')
+    n = len(kpis)
+    cols = " cols-2" if n == 2 else (" cols-3" if n == 3 else "")
+    return f'<div class="kpi-band{cols}">' + "".join(cards) + "</div>"
+
+
+def brand_lockup(brand: dict, logo: str | None) -> str:
+    """Logo if present, else a text wordmark from the display name, else nothing —
+    so the masthead/footer never render a broken or empty logo box."""
+    name = brand.get("display_name") or brand.get("company", {}).get("display_name") or ""
+    if logo:
+        return f'<span class="logo"><img src="{logo}" alt="{esc(name or "brand")} logo"></span>'
+    if name:
+        return f'<span class="wordmark">{esc(name)}</span>'
+    return ""
+
+
 def cards_grid(cards: list) -> str:
     out = []
     for c in cards:
@@ -996,14 +1022,14 @@ def build_deck(doc: dict, brand: dict, style: str, base_dir: Path) -> str:
     charts = ChartBook()
     slides = []
 
-    extras = kpi_row(meta["kpis"]) if meta.get("kpis") else ""
+    band = kpi_band(meta["kpis"]) if meta.get("kpis") else ""
     foot = byline(meta)
     slides.append(sub(partial("deck/title.html"), {
         "active": " active",
         "eyebrow": esc(meta.get("eyebrow", "")),
         "title_html": title_html_for(meta),
         "lead": rich(meta.get("lead", "")),
-        "extras": extras,
+        "kpi_band": band,
         "footnote": f'<p class="footnote">{foot}</p>' if foot else "",
     }))
 
@@ -1020,28 +1046,28 @@ def build_deck(doc: dict, brand: dict, style: str, base_dir: Path) -> str:
             }))
         elif t == "closing":
             extras = cards_grid(block["cards"]) if block.get("cards") else ""
-            foot = footer_line(brand)
             slides.append(sub(partial("deck/closing.html"), {
                 "active": "",
                 "eyebrow": esc(block.get("eyebrow", "Next steps")),
                 "heading": esc(block["heading"]),
                 "lead": rich(block.get("lead", "")),
                 "extras": extras,
-                "footnote": f'<p class="footnote">{foot}</p>' if foot else "",
+                "footnote": "",
             }))
         else:
+            title = block.get("heading") or block.get("title") or ""
             slides.append(sub(partial("deck/slide.html"),
-                              {"active": "", "body": block_body(block, charts, base_dir)}))
+                              {"active": "", "data_title": esc(title),
+                               "body": block_body(block, charts, base_dir)}))
 
     logo = logo_data_uri(brand)
-    mark = (f'<div class="brand-mark"><img src="{logo}" '
-            f'alt="{esc(brand.get("display_name", "brand"))} logo"></div>') if logo else ""
+    brand_foot = brand_lockup(brand, logo)   # logo -> wordmark -> nothing
     conf = brand.get("footer", {}).get("confidentiality", "")
     tokens = shell_tokens(brand, str(meta["title"]))
     tokens.update({
-        "brand_mark": mark,
+        "brand_foot": brand_foot,
         "slides": "\n".join(slides),
-        "confidential": f'<div class="confidential">{esc(conf)}</div>' if conf else "",
+        "confidential": esc(conf),
         "charts_js": charts.to_js(),
     })
     tokens.update(style_tokens(style))
@@ -1055,18 +1081,16 @@ def build_report(doc: dict, brand: dict, style: str, base_dir: Path) -> str:
     sections = []
 
     logo = logo_data_uri(brand)
-    hero_logo = (f'<div class="hero-logo"><img src="{logo}" '
-                 f'alt="{esc(brand.get("display_name", "brand"))} logo"></div>') if logo else ""
-    extras = kpi_row(meta["kpis"]) if meta.get("kpis") else ""
+    brand_el = brand_lockup(brand, logo)
+    band = kpi_band(meta["kpis"]) if meta.get("kpis") else ""
     foot = byline(meta)
     used_ids.add("overview")
     sections.append(sub(partial("report/hero.html"), {
         "id": "overview", "toc": "Overview",
-        "logo": hero_logo,
         "eyebrow": esc(meta.get("eyebrow", "")),
         "title_html": title_html_for(meta),
         "lead": rich(meta.get("lead", "")),
-        "extras": extras,
+        "kpi_band": band,
         "footnote": f'<p class="footnote">{foot}</p>' if foot else "",
     }))
 
@@ -1090,10 +1114,35 @@ def build_report(doc: dict, brand: dict, style: str, base_dir: Path) -> str:
             "body": body,
         }))
 
+    eyebrow = esc(meta.get("eyebrow", ""))
+    title_txt = esc(meta.get("title", ""))
+    divider = '<div class="brand-divider"></div>' if brand_el and title_txt else ""
+    sub_small = f"<small>{eyebrow}</small>" if eyebrow else ""
+    title_bit = f'<div class="masthead-title">{sub_small}{title_txt}</div>' if title_txt else ""
+    meta_right = byline(meta)
+    masthead = sub(partial("report/masthead.html"), {
+        "brand_el": brand_el, "divider": divider, "title_bit": title_bit,
+        "meta_right": f"<span>{meta_right}</span>" if meta_right else "",
+    })
+
+    year = datetime.now().year
+    f = brand.get("footer", {})
+    cop = (f.get("copyright") or "").replace("{year}", str(year)) \
+                                    .replace("{company}", brand.get("display_name", ""))
+    site = brand.get("company", {}).get("website")
+    left_bits = "  \u00b7  ".join(b for b in (cop, site) if b)
+    conf = f.get("confidentiality", "")
+    footer_inner = (brand_el if logo else "")
+    if left_bits:
+        footer_inner += f"<span>{esc(left_bits)}</span>"
+    if conf:
+        footer_inner += f'<span class="conf">{esc(conf)}</span>'
+
     tokens = shell_tokens(brand, str(meta["title"]))
     tokens.update({
+        "masthead": masthead,
         "sections": "\n".join(sections),
-        "report_footer": footer_line(brand),
+        "report_footer": footer_inner,
         "charts_js": charts.to_js(),
     })
     tokens.update(style_tokens(style))

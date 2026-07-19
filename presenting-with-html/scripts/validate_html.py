@@ -187,8 +187,13 @@ def check_html(raw: str) -> tuple[list[str], list[str], dict]:
 
 def _check_deck(html, need, want, checks):
     # ---- Slide deck structure ----
-    need("deck", 'class="deck"' in html or "class='deck'" in html,
-         "No .deck container — deck format must be a slide deck, not a scrolling page.")
+    # The deck shell scales a fixed 1920x1080 .stage canvas to fit (non-scrolling);
+    # legacy decks used a .deck container. Accept either — both guarantee a slide
+    # deck rather than a scrolling page.
+    need("deck",
+         any(f'class="{c}"' in html or f"class='{c}'" in html for c in ("stage", "deck")),
+         "No slide-deck container — deck format needs a fixed .stage (or legacy .deck) "
+         "canvas, not a scrolling page.")
     # Token-exact count: `\bslide\b` alone also matches slide-inner /
     # slide-count (the hyphen is a word boundary) and inflates the number.
     n_slides = sum(1 for m in re.finditer(r'class="([^"]*)"', html)

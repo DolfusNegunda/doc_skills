@@ -6,7 +6,7 @@
   "required": ["format", "meta"],
   "properties": {
     "format": { "enum": ["deck", "report"], "description": "deck = full-screen slides with navigation; report = long-form scrolling document with TOC + print styles." },
-    "style": { "enum": ["boardroom", "clean", "executive"], "description": "Visual preset: boardroom = dark-first glassmorphism; clean = light-first flat corporate, print-oriented; executive = light-first editorial serif, annual-report look. Default boardroom. CLI --style overrides." },
+    "style": { "enum": ["boardroom", "clean", "executive"], "description": "Visual preset: boardroom = dark-first flat corporate; clean = light-first flat corporate, print-oriented; executive = light-first editorial serif, annual-report look. Default boardroom. CLI --style overrides." },
     "brand": { "type": "string", "description": "Brand pack name under brands/ or a path to a client pack kept outside the repo. CLI --brand overrides." },
     "branding": {
       "type": "object",

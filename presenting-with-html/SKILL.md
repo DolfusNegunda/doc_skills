@@ -1,20 +1,20 @@
 ---
 name: presenting-with-html
-description: "Build a polished, self-contained HTML report or presentation — for anyone in the org, from a team status update to a board deck. Two formats (a slide DECK with full navigation, or a long-form REPORT with sticky TOC and print/PDF styles) times three style presets (dark-first BOARDROOM glassmorphism, light-first CLEAN corporate, or EXECUTIVE editorial serif) from one component system — KPI cards, charts, tables, timelines, comparisons, quotes, figures — with theme-aware Plotly and a persisted dark/light toggle. DEFAULT PATH: write a content JSON and run scripts/build_html.py — the builder owns the HTML shell, navigation, and styling. Branding is injected from a brand pack OR an inline branding object (logo path + colors in the content JSON); with no branding, every placeholder collapses to the neutral default. Use when the user asks for an HTML report, presentation, dashboard, web-based slide deck, or a detailed HTML document to fill with content."
+description: "Build a polished, self-contained HTML report or presentation — for anyone in the org, from a team status update to a board deck. Two formats (a slide DECK with full navigation, or a long-form REPORT with sticky TOC and print/PDF styles) times three style presets (dark-first BOARDROOM flat corporate, light-first CLEAN corporate, or EXECUTIVE editorial serif) from one component system — KPI cards, charts, tables, timelines, comparisons, quotes, figures — with theme-aware Plotly and a persisted dark/light toggle. DEFAULT PATH: write a content JSON and run scripts/build_html.py — the builder owns the HTML shell, navigation, and styling. Branding is injected from a brand pack OR an inline branding object (logo path + colors in the content JSON); with no branding, every placeholder collapses to the neutral default. Use when the user asks for an HTML report, presentation, dashboard, web-based slide deck, or a detailed HTML document to fill with content."
 ---
 
 # Presenting with HTML
 
 **Fill-only run? Read [QUICKREF.md](QUICKREF.md) instead** (top-level keys, exact block
-fields, the gates, the gotchas — 40 lines). Read this full file only for bespoke work or
+fields, the gates, the gotchas — 40 lines). Read this full file for the complete workflow or
 when a gate fails.
 
 ## Scope
 Turn content or data into a **premium, self-contained HTML deliverable** that reads as one
-design system — glassmorphism, KPI cards, interactive theme-aware Plotly charts, a
+design system — flat branded panels, KPI cards, interactive theme-aware Plotly charts, a
 persisted light/dark toggle. Two formats, chosen per request:
 
-- **Deck** — full-screen slides in a glass panel with a full HUD (arrow buttons, ←/→ keys,
+- **Deck** — full-screen slides on a scale-to-fit stage with a full HUD (arrow buttons, ←/→ keys,
   progress dots, slide counter). Best when the audience clicks through, presents live, or
   wants a boardroom feel. One message per slide.
 - **Report** — a long-form scrolling document with a sticky table of contents, scroll-spy,
@@ -23,7 +23,7 @@ persisted light/dark toggle. Two formats, chosen per request:
 
 And three **style presets**, chosen per build (`--style` or `"style"` in the content JSON):
 
-- **boardroom** (default) — dark-first glassmorphism, gradient accents; the premium
+- **boardroom** (default) — dark-first flat corporate, solid accents; the premium
   presented-live look.
 - **clean** — light-first, flat white panels, hairline borders, solid accents,
   print-oriented; what most client-facing corporate reports expect.
@@ -44,7 +44,8 @@ and stale counters are **structurally impossible**. Branding (logo, palette, fon
 comes from a brand pack in [../brands/](../brands/README.md) and is applied at build time.
 
 Never author a full HTML page from scratch, and never append content to a template file —
-if a layout truly doesn't fit the block types, use the bespoke path at the end of this file.
+if a layout truly doesn't fit the block types, extend the content with the block vocabulary
+you have or flag the gap; do not hand-author or patch the shell.
 
 ## Requirements — check before you start
 - **Use the whole skill folder** (`scripts/`, `assets/`, `schema/`, `examples/`). The builder
@@ -221,15 +222,6 @@ never hack the environment or the scripts to fake the gate, and never skip it si
 - [ ] `validate_html.py` returns `OK`; vision pass clean in both themes.
 - [ ] Plotly inlined for delivery — single self-contained file, CSP-safe.
 
-## Bespoke path (capable models only, layouts the blocks can't express)
-Copy [assets/deck-template.html](assets/deck-template.html) or
-[assets/report-template.html](assets/report-template.html) and **edit the content in place**
-— keep the CSS tokens, nav, and JS. Every sample block carries a `data-sample` attribute:
-remove it from each block as you replace its content (the validator fails while any remain).
-Add/remove `<section class="slide">` / `<section class="report-section" id="...">` blocks
-only; never a second `<html>`, `<style>`, or `<script>` block, never a class the stylesheet
-doesn't define. All gates (validate → vision → inline) still apply.
-
 ## Reference & assets
 - [scripts/build_html.py](scripts/build_html.py) — the builder (default path); `--scaffold` emits a skeleton, `--list` shows the vocabulary, `--validate-only` checks content.
 - [scripts/render_screenshots.py](scripts/render_screenshots.py) — one-command vision-QA screenshots (full default theme + spot second theme).
@@ -238,7 +230,6 @@ doesn't define. All gates (validate → vision → inline) still apply.
 - [examples/deck-content.json](examples/deck-content.json) / [examples/report-content.json](examples/report-content.json) — complete working inputs.
 - [assets/shells/](assets/shells/) + [assets/components/](assets/components/) — what the builder assembles (do not edit casually; they define the class vocabulary).
 - [../brands/README.md](../brands/README.md) — brand packs (logo, palette, fonts, footer).
-- [assets/deck-template.html](assets/deck-template.html) / [assets/report-template.html](assets/report-template.html) — bespoke-path boilerplates.
 - [references/design-system.md](references/design-system.md) — tokens, layouts, component specs.
 - [scripts/validate_html.py](scripts/validate_html.py) — the required, mode-aware structural gate.
 - [scripts/vendor_plotly.py](scripts/vendor_plotly.py) — fetch/inline Plotly for offline, CSP-safe delivery.
