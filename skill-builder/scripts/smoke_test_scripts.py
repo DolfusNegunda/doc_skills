@@ -447,9 +447,15 @@ def main():
               rc == 0 and d and d["status"] == "OK")
 
         print("presenting-with-html/validate_html.py (integrity hardening)")
-        boilerplate = ROOT / "presenting-with-html" / "assets" / "deck-template.html"
-        rc, d = run(f"{hdir}/validate_html.py", boilerplate)
-        check("validator FAILS the raw boilerplate (data-sample markers by design)",
+        # The bespoke boilerplates (which carried data-sample markers) were retired;
+        # assert the data-sample residue gate directly by injecting the marker into a
+        # real built deck.
+        sample_src = built_deck.read_text(encoding="utf-8").replace(
+            '<div class="stage"', '<div data-sample class="stage"', 1)
+        sample_file = tmp / "sample.html"
+        sample_file.write_text(sample_src, encoding="utf-8")
+        rc, d = run(f"{hdir}/validate_html.py", sample_file)
+        check("validator FAILS a page with data-sample residue",
               rc == 1 and d and d["status"] == "FAIL" and d["checks"].get("sample_blocks", 0) > 0)
         # Regression: the observed small-model failure — a second document appended
         # after </html> with duplicate IDs must hard-fail.
