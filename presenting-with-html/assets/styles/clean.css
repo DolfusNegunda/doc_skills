@@ -1,39 +1,28 @@
 
   /* ===== STYLE PRESET: clean corporate =====
-     Light-first, flat panels, hairline borders, print-oriented, conservative
-     typography. Appended after the base stylesheet by build_html.py; overrides
-     the boardroom glass look while keeping the identical class vocabulary. */
-  :root, :root[data-theme="dark"] {
-    --bg-0:#10151D; --bg-1:#10151D; --bg-glow:transparent;
-    --glass-bg:#161D28; --glass-border:rgba(255,255,255,.13);
-    --card-bg:#1B2330; --shadow:none; --grid:rgba(255,255,255,.09);
+     Light-first, flat panels, hairline borders, rounded corners, print-oriented.
+     Appended after the shell <style> by build_html.py; overrides the default
+     tokens using the current --panel/--hair vocabulary (shared deck + report). */
+  :root, :root[data-theme="light"] {
+    --bg:#F4F6FB; --panel:#FFFFFF; --panel-2:#FBFCFE;
+    --hair:#E4E8F0; --hair-strong:#D2D8E4; --grid:#E4E8F0;
+    --shadow:0 1px 2px rgba(16,32,80,.04), 0 6px 20px -12px rgba(16,32,80,.14);
+    --tint:color-mix(in srgb, var(--brand) 6%, #FFFFFF);
   }
-  :root[data-theme="light"] {
-    --bg-0:#F6F8FA; --bg-1:#F6F8FA; --bg-glow:transparent;
-    --glass-bg:#FFFFFF; --glass-border:rgba(15,23,42,.14);
-    --card-bg:#FFFFFF; --shadow:0 1px 3px rgba(15,23,42,.08); --grid:rgba(15,23,42,.09);
+  :root[data-theme="dark"] {
+    --bg:#0B1020;
+    --panel:color-mix(in srgb, #FFFFFF 6%, #0B1020);
+    --panel-2:color-mix(in srgb, #FFFFFF 3.5%, #0B1020);
+    --hair:rgba(255,255,255,.10); --hair-strong:rgba(255,255,255,.17); --grid:rgba(255,255,255,.10);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 44px -20px rgba(0,0,0,.6);
+    --tint:color-mix(in srgb, var(--brand) 14%, #0B1020);
   }
-  body { background:var(--bg-0); }
-  .slide-inner, .report-section, .toc {
-    backdrop-filter:none; -webkit-backdrop-filter:none; border-radius:12px;
+  /* flat, crisp: no blur anywhere; keep the shell's rounded corners */
+  .masthead, .report-section, .toc a, .kpi, .card, .chart-panel, .compare-panel,
+  .figure, .table-wrap, .person, .callout, .nav-btn, .btn, .rail, .slide-count, .to-top, thead th {
+    backdrop-filter:none; -webkit-backdrop-filter:none;
   }
-  .kpi, .card, .chart-panel, .compare-panel, .figure, .brand-mark, .hero-logo,
-  .person, .callout { border-radius:10px; }
-  .table-wrap { border-radius:8px; }
-  thead th { backdrop-filter:none; }
-  .accent, .section-num {
-    background:none; -webkit-background-clip:initial; background-clip:initial; color:var(--accent);
-  }
-  .bullets li::before {
-    background:var(--accent); border-radius:50%; transform:none; width:8px; height:8px;
-  }
-  .compare-panel li::before { background:var(--accent); border-radius:50%; transform:none; }
-  .compare-panel.alt li::before { background:var(--accent-2); }
-  .dot.active { background:var(--accent); }
-  .nav-btn, .theme-toggle, .slide-count, .to-top {
-    backdrop-filter:none; background:var(--glass-bg); box-shadow:0 1px 3px rgba(15,23,42,.10);
-  }
-  .timeline::before { background:var(--accent); opacity:.3; }
-  h1 { font-weight:750; letter-spacing:-.015em; }
-  h2 { font-weight:700; }
-  .kpi .value { font-weight:750; }
+  /* stronger headings for the corporate voice */
+  h1 { font-weight:700; letter-spacing:-.02em; }
+  h2 { font-weight:650; }
+  .kpi .value { font-weight:700; }
